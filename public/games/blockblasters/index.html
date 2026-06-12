@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Block Blasters</title>
+  <link rel="stylesheet" href="/css/kids.css">
+  <style>
+    body {
+      background: linear-gradient(160deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      overflow: hidden;
+    }
+    #header {
+      height: 60px; flex-shrink: 0; width: 100%;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 900; font-size: 20px;
+      letter-spacing: .5px; text-shadow: 0 2px 8px rgba(0,0,0,.4);
+    }
+    #board {
+      display: block; touch-action: none;
+      box-shadow: 0 -4px 24px rgba(0,0,0,.4);
+    }
+  </style>
+</head>
+<body>
+  <button class="nav-back" id="back-btn">←</button>
+  <div id="header">🎮 Block Blasters</div>
+  <canvas id="board"></canvas>
+
+  <script src="/games/_lib/confetti.js"></script>
+  <script src="/games/_lib/KidsGame.js"></script>
+  <script>
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight - 60;
+
+    const BALL_R   = 10;
+    const PADDLE_H = 14;
+    let   PADDLE_W = Math.min(120, canvas.width * 0.2);
+
+    const BLOCK_ROWS_PER_LEVEL = [4, 5, 6, 7, 8];
+    const BLOCK_COLS = 10;
+    const BLOCK_H    = 22;
+    const BLOCK_GAP  = 4;
+    let   BLOCK_W    = Math.floor((canvas.width - (BLOCK_COLS + 1) * BLOCK_GAP) / BLOCK_COLS);
+    const ROW_COLORS = ['#FFE66D','#FB923C','#FF6B6B','#F9A8D4','#A78BFA','#4ECDC4','#6BCB77','#7DD3FC'];
+    const BASE_SPEED = [4.5, 5, 5.5, 6, 6.5];
+    const MAX_LEVEL  = 5;
+
+    let ball, paddle, blocks, lives, score, level, launching, mode;
+    let banner = null;
+
+    class BlockBlasters extends KidsGame {
+      init() {
+        document.getElementById('back-btn').addEventListener('click', () => this.home());
+        bindControls();
+        this.start();
+        requestAnimationFrame(loop);
+      }
+      start() {
+        lives = 3;
+        score = 0;
+        level = 1;
+        startLevel();
+      }
+    }
+
+    const game = new BlockBlasters({ name: 'Block Blasters' });
+
+    function startLevel() {
+      PADDLE_W = Math.min(120, canvas.width * 0.2);
+      BLOCK_W  = Math.floor((canvas.width - (BLOCK_COLS + 1) * BLOCK_GAP) / BLOCK_COLS);
+      blocks = buildBlocks(level);
+      paddle = { x: canvas.width / 2 - PADDLE_W / 2, y: canvas.height - 30, w: PADDLE_W, h: PADDLE_H };
+      resetBall();
+      mode = 'play';
+      banner = null;
+    }
+
+    function resetBall() {
+      ball = {
+        x: paddle.x + paddle.w / 2,
+        y: paddle.y - BALL_R - 1,
+        vx: 0, vy: 0,
+      };
+      launching = true;
+    }
+
+    function launchBall() {
+      const speed = BASE_SPEED[Math.min(level - 1, MAX_LEVEL - 1)];
+      const angle = (Math.random() - 0.5) * (Math.PI * 0.4);
+      ball.vx = speed * Math.sin(angle);
+      ball.vy = -Math.abs(speed * Math.cos(angle));
+      launching = false;
+    }
+
+    function buildBlocks(lvl) {
+      const rows = BLOCK_ROWS_PER_LEVEL[Math.min(lvl - 1, 4)];
+      const out = [];
+      for (let r = 0; r < rows; r++) {
+        const maxHits = lvl >= 3 && r < 2 ? 2 : 1;
+        for (let c = 0; c < BLOCK_COLS; c++) {
+          out.push({
+            x: BLOCK_GAP + c * (BLOCK_W + BLOCK_GAP),
+            y: 70 + r * (BLOCK_H + BLOCK_GAP),
+            w: BLOCK_W, h: BLOCK_H,
+            color: ROW_COLORS[r % ROW_COLORS.length],
+            hits: maxHits, maxHits,
+          });
+        }
+      }
+      return out;
+    }
+
+    function hitPaddle() {
+      const hitPos = (ball.x - paddle.x) / paddle.w;
+      const angle  = (hitPos - 0.5) * (Math.PI * 0.75);
+      const speed  = Math.sqrt(ball.vx ** 2 + ball.vy ** 2);
+      ball.vx = speed * Math.sin(angle);
+      ball.vy = -Math.abs(speed * Math.cos(angle));
+      ball.y  = paddle.y - BALL_R;
+    }
+
+    function circleRect(b, rect) {
+      const nx = Math.max(rect.x, Math.min(b.x, rect.x + rect.w));
+      const ny = Math.max(rect.y, Math.min(b.y, rect.y + rect.h));
+      return (b.x - nx) ** 2 + (b.y - ny) ** 2 <= BALL_R ** 2;
+    }
+
+    function setPaddleFromClient(clientX) {
+      const r  = canvas.getBoundingClientRect();
+      const tx = (clientX - r.left) * (canvas.width / r.width);
+      paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, tx - paddle.w / 2));
+    }
+
+    function bindControls() {
+      canvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        setPaddleFromClient(e.touches[0].clientX);
+      }, { passive: false });
+
+      canvas.addEventListener('mousemove', e => {
+        setPaddleFromClient(e.clientX);
+      });
+
+      const launchHandler = e => {
+        e.preventDefault();
+        game._ctx();
+        if (mode === 'play' && launching) launchBall();
+      };
+      canvas.addEventListener('touchstart', launchHandler, { passive: false });
+      canvas.addEventListener('mousedown', launchHandler);
+
+      window.addEventListener('resize', () => {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight - 60;
+        if (paddle) {
+          paddle.y = canvas.height - 30;
+          paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, paddle.x));
+        }
+      });
+    }
+
+    function update() {
+      if (mode !== 'play') return;
+
+      if (launching) {
+        ball.x = paddle.x + paddle.w / 2;
+        ball.y = paddle.y - BALL_R - 1;
+        return;
+      }
+
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+
+      if (ball.x - BALL_R < 0) { ball.x = BALL_R; ball.vx = Math.abs(ball.vx); }
+      if (ball.x + BALL_R > canvas.width) { ball.x = canvas.width - BALL_R; ball.vx = -Math.abs(ball.vx); }
+      if (ball.y - BALL_R < 0) { ball.y = BALL_R; ball.vy = Math.abs(ball.vy); }
+
+      if (ball.vy > 0 &&
+          ball.y + BALL_R >= paddle.y &&
+          ball.y - BALL_R <= paddle.y + paddle.h &&
+          ball.x >= paddle.x && ball.x <= paddle.x + paddle.w) {
+        hitPaddle();
+        game.sound('click');
+      }
+
+      for (let i = 0; i < blocks.length; i++) {
+        const blk = blocks[i];
+        if (!circleRect(ball, blk)) continue;
+
+        const overlapLeft   = ball.x + BALL_R - blk.x;
+        const overlapRight  = blk.x + blk.w - (ball.x - BALL_R);
+        const overlapTop    = ball.y + BALL_R - blk.y;
+        const overlapBottom = blk.y + blk.h - (ball.y - BALL_R);
+        const minX = Math.min(overlapLeft, overlapRight);
+        const minY = Math.min(overlapTop, overlapBottom);
+        if (minX < minY) ball.vx = -ball.vx; else ball.vy = -ball.vy;
+
+        blk.hits--;
+        if (blk.hits <= 0) {
+          blocks.splice(i, 1);
+          score += 10 * level;
+        } else {
+          score += 5 * level;
+        }
+        game.sound('pop');
+        break;
+      }
+
+      if (blocks.length === 0) { onLevelClear(); return; }
+
+      if (ball.y - BALL_R > canvas.height) {
+        lives--;
+        if (lives <= 0) {
+          mode = 'over';
+          game.showLose('Game Over! 💥', cb => { if (cb === 'again') game.start(); });
+        } else {
+          resetBall();
+        }
+      }
+    }
+
+    function onLevelClear() {
+      if (level >= MAX_LEVEL) {
+        mode = 'over';
+        game.showWin(3, cb => { if (cb === 'again') game.start(); });
+        return;
+      }
+      mode = 'clear';
+      banner = 'Level ' + level + ' ✓ 🎉';
+      game.sound('cheer');
+      setTimeout(() => {
+        level++;
+        startLevel();
+      }, 1400);
+    }
+
+    function draw() {
+      ctx.fillStyle = '#0a0a1a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += 40) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      for (const blk of blocks) drawBlock(blk);
+
+      drawPaddle();
+      if (!launching || mode === 'play') drawBall();
+
+      drawHUD();
+
+      if (launching && mode === 'play') {
+        ctx.fillStyle = 'white';
+        ctx.font = '900 24px Nunito, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Tap to launch! 👆', canvas.width / 2, canvas.height / 2);
+      }
+
+      if (banner) {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0, canvas.height / 2 - 50, canvas.width, 100);
+        ctx.fillStyle = 'white';
+        ctx.font = '900 40px Nunito, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(banner, canvas.width / 2, canvas.height / 2);
+      }
+    }
+
+    function drawBlock(blk) {
+      ctx.fillStyle = blk.color;
+      ctx.fillRect(blk.x, blk.y, blk.w, blk.h);
+
+      if (blk.maxHits > 1 && blk.hits > 1) {
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fillRect(blk.x, blk.y, blk.w, blk.h / 2);
+      }
+
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillRect(blk.x, blk.y, blk.w, 3);
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      ctx.fillRect(blk.x, blk.y + blk.h - 3, blk.w, 3);
+
+      if (blk.maxHits > 1 && blk.hits === 1) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(blk.x + 4, blk.y + 4);
+        ctx.lineTo(blk.x + blk.w - 4, blk.y + blk.h - 4);
+        ctx.stroke();
+      }
+    }
+
+    function drawPaddle() {
+      const cx = paddle.x + paddle.w / 2;
+      const cy = paddle.y + paddle.h / 2;
+      const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, paddle.w / 2);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(1, '#c7d2fe');
+      ctx.fillStyle = grad;
+      roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 7);
+      ctx.fill();
+    }
+
+    function drawBall() {
+      ctx.save();
+      ctx.shadowColor = '#fff';
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawHUD() {
+      ctx.fillStyle = 'white';
+      ctx.font = '900 20px Nunito, sans-serif';
+      ctx.textBaseline = 'top';
+
+      ctx.textAlign = 'left';
+      ctx.fillText('⭐ ' + score, 12, 14);
+
+      ctx.textAlign = 'center';
+      ctx.fillText('Level ' + level, canvas.width / 2, 14);
+
+      ctx.textAlign = 'right';
+      ctx.fillText('❤️'.repeat(Math.max(0, lives)), canvas.width - 12, 14);
+    }
+
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => game.init());
+  </script>
+</body>
+</html>

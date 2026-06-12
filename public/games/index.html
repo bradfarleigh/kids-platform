@@ -11,7 +11,7 @@
 
     .games-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
       gap: 20px;
       padding: 0 20px 32px;
       max-width: 860px;
@@ -20,20 +20,6 @@
     }
 
     .game-card { position: relative; }
-
-    .game-card.coming-soon {
-      opacity: .65;
-      cursor: default;
-    }
-    .game-card.coming-soon:active { transform: none; }
-
-    .coming-tag {
-      position: absolute; top: 12px; right: 12px;
-      background: #EDF2F7; color: var(--mid);
-      font-size: 11px; font-weight: 800;
-      padding: 3px 8px; border-radius: 8px;
-      text-transform: uppercase; letter-spacing: .5px;
-    }
   </style>
 </head>
 <body>
@@ -48,29 +34,40 @@
       <span class="badge badge-all">4 – 7 yrs</span>
     </a>
 
-    <div class="card game-card coming-soon">
-      <span class="coming-tag">Soon</span>
+    <a href="/games/tracing/" class="card game-card">
+      <span class="card-icon">✏️</span>
+      <span class="card-title">Tracing</span>
+      <span class="card-desc">Trace letters & numbers</span>
+      <span class="badge badge-4">4+ yrs</span>
+    </a>
+
+    <a href="/games/coloring/" class="card game-card">
       <span class="card-icon">🎨</span>
       <span class="card-title">Colouring</span>
       <span class="card-desc">Paint & draw</span>
       <span class="badge badge-4">4+ yrs</span>
-    </div>
+    </a>
 
-    <div class="card game-card coming-soon">
-      <span class="coming-tag">Soon</span>
+    <a href="/games/blocks/" class="card game-card">
       <span class="card-icon">🧱</span>
       <span class="card-title">Blocks</span>
-      <span class="card-desc">Stack & build</span>
-      <span class="badge badge-4">4+ yrs</span>
-    </div>
+      <span class="card-desc">Classic Tetris</span>
+      <span class="badge badge-6">6+ yrs</span>
+    </a>
 
-    <div class="card game-card coming-soon">
-      <span class="coming-tag">Soon</span>
+    <a href="/games/blockblasters/" class="card game-card">
+      <span class="card-icon">🎮</span>
+      <span class="card-title">Block Blasters</span>
+      <span class="card-desc">Break the blocks!</span>
+      <span class="badge badge-6">5+ yrs</span>
+    </a>
+
+    <a href="/games/uno/" class="card game-card">
       <span class="card-icon">🃏</span>
       <span class="card-title">Uno</span>
       <span class="card-desc">Card game</span>
       <span class="badge badge-6">6+ yrs</span>
-    </div>
+    </a>
   </div>
 </body>
 </html>

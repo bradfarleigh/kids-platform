@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Tracing</title>
+  <link rel="stylesheet" href="/css/kids.css">
+  <style>
+    body { background: linear-gradient(160deg, #a18cd1 0%, #fbc2eb 100%); }
+
+    #screen-mode {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 28px; padding: 20px;
+    }
+    .mode-title {
+      font-size: clamp(32px, 7vw, 60px); font-weight: 900;
+      color: white; text-shadow: 0 3px 12px rgba(0,0,0,.2);
+    }
+    .mode-cards {
+      display: grid; grid-template-columns: 1fr; gap: 18px;
+      width: 100%; max-width: 360px;
+    }
+    .mode-card {
+      background: white; border-radius: 24px; padding: 26px 20px;
+      text-align: center; cursor: pointer; box-shadow: 0 8px 32px rgba(0,0,0,.12);
+      transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+      display: flex; align-items: center; gap: 18px;
+      border: none; font-family: inherit;
+    }
+    .mode-card:active { transform: scale(.95); }
+    .mode-card-icon  { font-size: 52px; line-height: 1; }
+    .mode-card-text  { text-align: left; }
+    .mode-card-label { font-size: 26px; font-weight: 900; color: #1A202C; }
+    .mode-card-sub   { font-size: 14px; font-weight: 700; color: #718096; }
+    .mode-card--letters { border-left: 8px solid #A78BFA; }
+    .mode-card--numbers { border-left: 8px solid #4ECDC4; }
+    .mode-card--mix     { border-left: 8px solid #FB923C; }
+
+    #screen-game {
+      display: none; flex: 1; flex-direction: column;
+      align-items: center; justify-content: center; gap: 18px; width: 100%; padding: 80px 20px 24px;
+    }
+    .trace-header {
+      display: flex; align-items: center; gap: 16px;
+    }
+    .trace-prompt {
+      font-size: 22px; font-weight: 900; color: white;
+      text-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+    .trace-area {
+      position: relative; width: 260px; height: 260px;
+    }
+    .check-flash {
+      position: absolute; inset: 0; display: flex;
+      align-items: center; justify-content: center;
+      font-size: 130px; pointer-events: none; opacity: 0;
+      transition: opacity .15s;
+    }
+    .check-flash.show { opacity: 1; animation: bounce-in .4s cubic-bezier(.34,1.56,.64,1); }
+
+    .progress-track {
+      width: 220px; height: 18px; border-radius: 100px;
+      background: rgba(255,255,255,.4); overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; width: 0%; background: var(--green);
+      border-radius: 100px; transition: width .15s;
+    }
+    .clear-btn {
+      background: rgba(255,255,255,.3); border: none; border-radius: 14px;
+      padding: 12px 28px; font-family: inherit; font-size: 18px; font-weight: 900;
+      color: white; cursor: pointer; backdrop-filter: blur(8px);
+      transition: transform .1s;
+    }
+    .clear-btn:active { transform: scale(.92); }
+  </style>
+</head>
+<body>
+  <button class="nav-back" id="back-btn">←</button>
+
+  <div id="screen-mode">
+    <div class="mode-title">Tracing ✏️</div>
+    <div class="mode-cards">
+      <button class="mode-card mode-card--letters" data-mode="letters">
+        <span class="mode-card-icon">🔤</span>
+        <span class="mode-card-text">
+          <span class="mode-card-label">Letters</span><br>
+          <span class="mode-card-sub">A – Z</span>
+        </span>
+      </button>
+      <button class="mode-card mode-card--numbers" data-mode="numbers">
+        <span class="mode-card-icon">🔢</span>
+        <span class="mode-card-text">
+          <span class="mode-card-label">Numbers</span><br>
+          <span class="mode-card-sub">0 – 9</span>
+        </span>
+      </button>
+      <button class="mode-card mode-card--mix" data-mode="mix">
+        <span class="mode-card-icon">🎲</span>
+        <span class="mode-card-text">
+          <span class="mode-card-label">Mix</span><br>
+          <span class="mode-card-sub">Letters & numbers</span>
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <div id="screen-game">
+    <div class="trace-header">
+      <div class="progress-dots" id="dots"></div>
+      <div class="trace-prompt">Trace it!</div>
+    </div>
+    <div class="trace-area">
+      <canvas id="guide-canvas" width="260" height="260"
+              style="position:absolute;top:0;left:0;border-radius:20px;background:white;box-shadow:0 8px 32px rgba(0,0,0,.12)"></canvas>
+      <canvas id="draw-canvas" width="260" height="260"
+              style="position:absolute;top:0;left:0;border-radius:20px;background:transparent;touch-action:none"></canvas>
+      <div class="check-flash" id="check-flash">✓</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <button class="clear-btn" id="clear-btn">Clear ✏️</button>
+  </div>
+
+  <script src="/games/_lib/confetti.js"></script>
+  <script src="/games/_lib/KidsGame.js"></script>
+  <script>
+    const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const NUMBERS = '0123456789'.split('');
+    const SESSION_LEN = 5;
+    const GRID = 8;
+    const COVER_TARGET = 0.70;
+
+    const guideCanvas = document.getElementById('guide-canvas');
+    const drawCanvas  = document.getElementById('draw-canvas');
+    const drawCtx     = drawCanvas.getContext('2d');
+    const screenMode  = document.getElementById('screen-mode');
+    const screenGame  = document.getElementById('screen-game');
+    const dotsEl      = document.getElementById('dots');
+    const progressFill = document.getElementById('progress-fill');
+    const checkFlash  = document.getElementById('check-flash');
+    const clearBtn    = document.getElementById('clear-btn');
+    const backBtn     = document.getElementById('back-btn');
+
+    drawCtx.lineWidth = 22;
+    drawCtx.lineCap = 'round';
+    drawCtx.lineJoin = 'round';
+    drawCtx.strokeStyle = '#FF6B6B';
+
+    let game, currentMode, session, charIndex;
+    let coveredCells, letterCells, clears, locked;
+    let drawing = false, lastX = null, lastY = null;
+
+    class TracingGame extends KidsGame {
+      init() {
+        document.querySelectorAll('.mode-card').forEach(btn =>
+          btn.addEventListener('click', () => { this._ctx(); startGame(btn.dataset.mode); }));
+        clearBtn.addEventListener('click', clearDrawing);
+        backBtn.addEventListener('click', () => {
+          if (screenGame.style.display !== 'none') showModeSelect();
+          else this.home();
+        });
+        bindDrawing();
+      }
+    }
+
+    function startGame(modeKey) {
+      currentMode = modeKey;
+      const pool = modeKey === 'letters' ? [...LETTERS]
+                 : modeKey === 'numbers' ? [...NUMBERS]
+                 : [...LETTERS, ...NUMBERS];
+      session = shuffle(pool).slice(0, SESSION_LEN);
+      charIndex = 0;
+      clears = 0;
+      screenMode.style.display = 'none';
+      screenGame.style.display = 'flex';
+      renderDots();
+      loadChar(session[0]);
+    }
+
+    function showModeSelect() {
+      screenGame.style.display = 'none';
+      screenMode.style.display = 'flex';
+    }
+
+    function renderDots() {
+      dotsEl.innerHTML = '';
+      for (let i = 0; i < SESSION_LEN; i++) {
+        const d = document.createElement('div');
+        d.className = 'dot' + (i < charIndex ? ' done' : i === charIndex ? ' current' : '');
+        dotsEl.appendChild(d);
+      }
+    }
+
+    function loadChar(char) {
+      locked = false;
+      coveredCells = new Set();
+      drawCtx.clearRect(0, 0, 260, 260);
+      progressFill.style.width = '0%';
+      checkFlash.classList.remove('show');
+      drawGuide(char);
+      letterCells = buildLetterMap(char);
+    }
+
+    function drawGuide(char) {
+      const gctx = guideCanvas.getContext('2d');
+      gctx.clearRect(0, 0, 260, 260);
+      gctx.font = '900 190px Arial, sans-serif';
+      gctx.textAlign = 'center';
+      gctx.textBaseline = 'middle';
+      gctx.fillStyle = '#E8E8E8';
+      gctx.fillText(char, 130, 130);
+      gctx.strokeStyle = '#D0D0D0';
+      gctx.lineWidth = 3;
+      gctx.strokeText(char, 130, 130);
+    }
+
+    function buildLetterMap(char) {
+      const oc = document.createElement('canvas');
+      oc.width = 260; oc.height = 260;
+      const octx = oc.getContext('2d');
+      octx.font = '900 190px Arial, sans-serif';
+      octx.textAlign = 'center';
+      octx.textBaseline = 'middle';
+      octx.fillStyle = '#000';
+      octx.fillText(char, 130, 130);
+
+      const data = octx.getImageData(0, 0, 260, 260).data;
+      const cells = new Set();
+      for (let gy = 0; gy < Math.ceil(260 / GRID); gy++) {
+        for (let gx = 0; gx < Math.ceil(260 / GRID); gx++) {
+          let found = false;
+          for (let dy = 0; dy < GRID && !found; dy++) {
+            for (let dx = 0; dx < GRID && !found; dx++) {
+              const px = gx * GRID + dx, py = gy * GRID + dy;
+              if (px < 260 && py < 260 && data[(py * 260 + px) * 4 + 3] > 60) found = true;
+            }
+          }
+          if (found) cells.add(`${gx},${gy}`);
+        }
+      }
+      return cells;
+    }
+
+    function canvasXY(e) {
+      const r = drawCanvas.getBoundingClientRect();
+      const t = e.touches ? e.touches[0] : e;
+      return [
+        (t.clientX - r.left) * (260 / r.width),
+        (t.clientY - r.top)  * (260 / r.height),
+      ];
+    }
+
+    function startStroke(x, y) {
+      if (locked) return;
+      drawing = true;
+      lastX = x; lastY = y;
+      onMove(x, y);
+    }
+
+    function onMove(x, y) {
+      if (!drawing || locked) return;
+      drawCtx.beginPath();
+      drawCtx.moveTo(lastX ?? x, lastY ?? y);
+      drawCtx.lineTo(x, y);
+      drawCtx.stroke();
+      lastX = x; lastY = y;
+      checkCoverage(x, y);
+    }
+
+    function endStroke() {
+      drawing = false;
+      lastX = null; lastY = null;
+    }
+
+    function checkCoverage(x, y) {
+      const gx = Math.floor(x / GRID);
+      const gy = Math.floor(y / GRID);
+      let newCells = false;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const key = `${gx + dc},${gy + dr}`;
+          if (letterCells.has(key) && !coveredCells.has(key)) {
+            coveredCells.add(key);
+            newCells = true;
+          }
+        }
+      }
+      if (newCells) {
+        game.sound('pop');
+        updateProgress();
+      }
+      if (!locked && coveredCells.size / letterCells.size >= COVER_TARGET) onCharComplete();
+    }
+
+    function updateProgress() {
+      const pct = Math.min(1, coveredCells.size / letterCells.size);
+      progressFill.style.width = (pct * 100) + '%';
+    }
+
+    function onCharComplete() {
+      locked = true;
+      drawing = false;
+      game.sound('correct');
+      checkFlash.classList.add('show');
+      setTimeout(() => {
+        charIndex++;
+        renderDots();
+        if (charIndex >= session.length) {
+          const stars = clears <= 1 ? 3 : clears <= 4 ? 2 : 1;
+          game.showWin(stars, cb => { if (cb === 'again') startGame(currentMode); });
+        } else {
+          loadChar(session[charIndex]);
+        }
+      }, 900);
+    }
+
+    function clearDrawing() {
+      drawCtx.clearRect(0, 0, 260, 260);
+      coveredCells = new Set();
+      clears++;
+      updateProgress();
+      game.sound('click');
+    }
+
+    function bindDrawing() {
+      drawCanvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        game._ctx();
+        const [x, y] = canvasXY(e);
+        startStroke(x, y);
+      }, { passive: false });
+      drawCanvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const [x, y] = canvasXY(e);
+        onMove(x, y);
+      }, { passive: false });
+      drawCanvas.addEventListener('touchend', e => { e.preventDefault(); endStroke(); }, { passive: false });
+      drawCanvas.addEventListener('touchcancel', endStroke);
+
+      drawCanvas.addEventListener('mousedown', e => {
+        game._ctx();
+        const [x, y] = canvasXY(e);
+        startStroke(x, y);
+      });
+      drawCanvas.addEventListener('mousemove', e => {
+        const [x, y] = canvasXY(e);
+        onMove(x, y);
+      });
+      window.addEventListener('mouseup', endStroke);
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      game = new TracingGame({ name: 'Tracing' });
+      game.init();
+    });
+  </script>
+</body>
+</html>
