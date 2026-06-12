@@ -439,6 +439,10 @@
     const guideCanvas  = document.getElementById('guide-canvas');
     const drawCanvas   = document.getElementById('draw-canvas');
     const drawCtx      = drawCanvas.getContext('2d');
+    drawCtx.lineWidth = 22;
+    drawCtx.lineCap = 'round';
+    drawCtx.lineJoin = 'round';
+    drawCtx.strokeStyle = '#FF6B6B';
     const progressFill = document.getElementById('progress-fill');
     const checkFlash   = document.getElementById('check-flash');
     const clearBtn     = document.getElementById('clear-btn');
@@ -447,11 +451,6 @@
     let drawing = false, lastX = null, lastY = null;
 
     function startTracing() {
-      drawCtx.lineWidth = 22;
-      drawCtx.lineCap = 'round';
-      drawCtx.lineJoin = 'round';
-      drawCtx.strokeStyle = '#FF6B6B';
-
       const pool = shuffle([...LETTERS, ...NUMBERS]);
       traceSession = pool.slice(0, WORDS_PER_GAME);
       traceIndex = 0;

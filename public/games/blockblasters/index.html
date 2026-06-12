@@ -52,11 +52,14 @@
 
     let ball, paddle, blocks, lives, score, level, launching, mode;
     let banner = null;
+    let bgCanvas, canvasRect;
+    let paddleGrad = null, paddleGradKey = '';
 
     class BlockBlasters extends KidsGame {
       init() {
         document.getElementById('back-btn').addEventListener('click', () => this.home());
         bindControls();
+        refreshLayout();
         this.start();
         requestAnimationFrame(loop);
       }
@@ -131,9 +134,26 @@
     }
 
     function setPaddleFromClient(clientX) {
-      const r  = canvas.getBoundingClientRect();
-      const tx = (clientX - r.left) * (canvas.width / r.width);
+      const tx = (clientX - canvasRect.left) * (canvas.width / canvasRect.width);
       paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, tx - paddle.w / 2));
+    }
+
+    function refreshLayout() {
+      canvasRect = canvas.getBoundingClientRect();
+      bgCanvas = document.createElement('canvas');
+      bgCanvas.width  = canvas.width;
+      bgCanvas.height = canvas.height;
+      const bx = bgCanvas.getContext('2d');
+      bx.fillStyle = '#0a0a1a';
+      bx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+      bx.strokeStyle = 'rgba(255,255,255,0.03)';
+      bx.lineWidth = 1;
+      for (let x = 0; x < bgCanvas.width; x += 40) {
+        bx.beginPath(); bx.moveTo(x, 0); bx.lineTo(x, bgCanvas.height); bx.stroke();
+      }
+      for (let y = 0; y < bgCanvas.height; y += 40) {
+        bx.beginPath(); bx.moveTo(0, y); bx.lineTo(bgCanvas.width, y); bx.stroke();
+      }
     }
 
     function bindControls() {
@@ -161,6 +181,7 @@
           paddle.y = canvas.height - 30;
           paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, paddle.x));
         }
+        refreshLayout();
       });
     }
 
@@ -240,17 +261,7 @@
     }
 
     function draw() {
-      ctx.fillStyle = '#0a0a1a';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-      ctx.lineWidth = 1;
-      for (let x = 0; x < canvas.width; x += 40) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-      }
-      for (let y = 0; y < canvas.height; y += 40) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-      }
+      ctx.drawImage(bgCanvas, 0, 0);
 
       for (const blk of blocks) drawBlock(blk);
 
@@ -303,12 +314,16 @@
     }
 
     function drawPaddle() {
-      const cx = paddle.x + paddle.w / 2;
-      const cy = paddle.y + paddle.h / 2;
-      const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, paddle.w / 2);
-      grad.addColorStop(0, '#ffffff');
-      grad.addColorStop(1, '#c7d2fe');
-      ctx.fillStyle = grad;
+      const key = paddle.x + '_' + paddle.y + '_' + paddle.w;
+      if (key !== paddleGradKey) {
+        const cx = paddle.x + paddle.w / 2;
+        const cy = paddle.y + paddle.h / 2;
+        paddleGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, paddle.w / 2);
+        paddleGrad.addColorStop(0, '#ffffff');
+        paddleGrad.addColorStop(1, '#c7d2fe');
+        paddleGradKey = key;
+      }
+      ctx.fillStyle = paddleGrad;
       roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 7);
       ctx.fill();
     }
