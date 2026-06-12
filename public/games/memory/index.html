@@ -80,7 +80,13 @@
     .mcard-front {
       background: white;
       transform: rotateY(180deg);
-      font-size: clamp(32px, 8vw, 56px);
+      font-size: clamp(24px, 6vw, 40px);
+      font-weight: 900;
+      color: #1A202C;
+      padding: 6px;
+      text-align: center;
+      line-height: 1.1;
+      word-break: break-word;
     }
     .mcard.matched { pointer-events: none; }
     .mcard.matched .mcard-inner { animation: matched-pop .45s cubic-bezier(.34,1.56,.64,1); }
@@ -124,13 +130,25 @@
   <script src="/games/_lib/KidsGame.js"></script>
   <script>
     const DIFFICULTIES = {
-      easy:   { label: 'Easy',   icon: '🐣', pairs: 3, cols: 3 },
-      medium: { label: 'Medium', icon: '🦊', pairs: 6, cols: 4 },
-      hard:   { label: 'Hard',   icon: '🦁', pairs: 8, cols: 4 },
+      easy: {
+        label: 'Easy', icon: '🔤', pairs: 6, cols: 4,
+        sub: 'Letters & numbers', age: '4 – 6 yrs',
+        pool: ['A','B','C','D','E','F','G','H','I','J','K','L','1','2','3','4','5','6','7','8','9'],
+        fontSize: 'clamp(32px, 9vw, 52px)',
+      },
+      medium: {
+        label: 'Medium', icon: '📖', pairs: 8, cols: 4,
+        sub: 'Simple words', age: '6 – 8 yrs',
+        pool: ['cat','dog','hat','sun','pig','ant','cup','bed','hen','bat','run','red','big','hop','mud','van','lip','web','fox','jam'],
+        fontSize: 'clamp(20px, 5vw, 28px)',
+      },
+      hard: {
+        label: 'Hard', icon: '🧩', pairs: 10, cols: 5,
+        sub: 'Bigger words', age: '7 – 10 yrs',
+        pool: ['apple','table','happy','light','night','grass','dream','water','cloud','space','bring','dance','ocean','plant','stone','tiger','smile','bread','clock','crown','queen','storm','shelf','train','flame'],
+        fontSize: 'clamp(13px, 3vw, 18px)',
+      },
     };
-
-    const EMOJI_POOL = ['🐶','🐱','🦊','🐸','🐵','🦄','🐢','🐠','🦋','🐝',
-                        '🍎','🍌','🍓','🍕','🍦','🚀','🚗','⚽','🌈','⭐'];
 
     const screenMode  = document.getElementById('screen-mode');
     const screenGame  = document.getElementById('screen-game');
@@ -190,7 +208,8 @@
         btn.innerHTML = `
           <span class="mode-card-icon">${cfg.icon}</span>
           <span class="mode-card-label">${cfg.label}</span>
-          <span class="mode-card-sub">${cfg.pairs * 2} cards</span>
+          <span class="mode-card-sub">${cfg.sub}</span>
+          <span class="mode-card-sub" style="font-size:11px;color:#aaa">${cfg.age}</span>
           <span class="mode-card-best">${best > 0 ? `Best: ⭐ ${best}` : ''}</span>`;
         btn.addEventListener('click', () => {
           game._ctx();
@@ -271,20 +290,20 @@
         const cfg = this.cfg;
         const cols = cfg.cols;
 
-        const chosen = shuffle([...EMOJI_POOL]).slice(0, cfg.pairs);
+        const chosen = shuffle([...cfg.pool]).slice(0, cfg.pairs);
         const deck = shuffle(chosen.concat(chosen));
 
         gridEl.innerHTML = '';
         gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
 
-        deck.forEach(emoji => {
+        deck.forEach(word => {
           const card = document.createElement('button');
           card.className = 'mcard';
-          card.dataset.emoji = emoji;
+          card.dataset.emoji = word;
           card.innerHTML = `
             <div class="mcard-inner">
               <div class="mcard-face mcard-back">?</div>
-              <div class="mcard-face mcard-front">${emoji}</div>
+              <div class="mcard-face mcard-front" style="font-size:${cfg.fontSize}">${word}</div>
             </div>`;
           card.addEventListener('click', () => this.onCardTap(card));
           gridEl.appendChild(card);
