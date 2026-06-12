@@ -441,6 +441,7 @@
 
     function handleTileTap(tile) {
       if (tile.disabled) return;
+      if (currentSlot >= currentGraphemes.length) return;
       game._ctx();
 
       if (tile.dataset.g === currentGraphemes[currentSlot]) {
