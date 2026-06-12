@@ -13,6 +13,14 @@
       flex: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 28px; padding: 20px;
     }
+    #screen-difficulty {
+      display: none; flex: 1; flex-direction: column;
+      align-items: center; justify-content: center; gap: 28px; padding: 20px;
+    }
+    #screen-style {
+      display: none; flex: 1; flex-direction: column;
+      align-items: center; justify-content: center; gap: 28px; padding: 20px;
+    }
     .mode-title {
       font-size: clamp(32px, 7vw, 60px); font-weight: 900;
       color: white; text-shadow: 0 3px 12px rgba(0,0,0,.2);
@@ -36,6 +44,8 @@
     .mode-card--letters { border-left: 8px solid #A78BFA; }
     .mode-card--numbers { border-left: 8px solid #4ECDC4; }
     .mode-card--mix     { border-left: 8px solid #FB923C; }
+    .mode-card--print   { border-left: 8px solid #A78BFA; }
+    .mode-card--cursive { border-left: 8px solid #FB923C; }
 
     #screen-game {
       display: none; flex: 1; flex-direction: column;
@@ -80,6 +90,33 @@
   <button class="nav-back" id="back-btn">←</button>
 
   <div id="screen-mode">
+    <div class="mode-title">Tracing ✏️</div>
+    <div class="mode-cards" id="style-cards">
+      <button class="mode-card mode-card--print" data-style="print">
+        <span class="mode-card-icon">🖨️</span>
+        <span class="mode-card-text">
+          <span class="mode-card-label">Print</span><br>
+          <span class="mode-card-sub">Handwriting</span>
+        </span>
+      </button>
+      <button class="mode-card mode-card--cursive" data-style="cursive">
+        <span class="mode-card-icon">✏️</span>
+        <span class="mode-card-text">
+          <span class="mode-card-label">Cursive</span><br>
+          <span class="mode-card-sub">Joined letters</span>
+        </span>
+      </button>
+      <button class="mode-card mode-card--mix" data-style="mix">
+        <span class="mode-card-icon">🎲</span>
+        <span class="mode-card-text">
+          <span class="mode-card-label">Mix</span><br>
+          <span class="mode-card-sub">Both styles</span>
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <div id="screen-difficulty">
     <div class="mode-title">Tracing ✏️</div>
     <div class="mode-cards">
       <button class="mode-card mode-card--letters" data-mode="letters">
@@ -135,6 +172,7 @@
     const drawCanvas  = document.getElementById('draw-canvas');
     const drawCtx     = drawCanvas.getContext('2d');
     const screenMode  = document.getElementById('screen-mode');
+    const screenDifficulty = document.getElementById('screen-difficulty');
     const screenGame  = document.getElementById('screen-game');
     const dotsEl      = document.getElementById('dots');
     const progressFill = document.getElementById('progress-fill');
@@ -147,40 +185,461 @@
     drawCtx.lineJoin = 'round';
     drawCtx.strokeStyle = '#FF6B6B';
 
-    let game, currentMode, session, charIndex;
+    let game, currentStyle, currentMode, session, charIndex, currentLetterStyle;
     let coveredCells, letterCells, clears, locked;
     let drawing = false, lastX = null, lastY = null;
 
+    const letterPaths = {
+      A: {
+        print: { cells: new Set(), arrows: [[130, 145, 180], [130, 145, 0], [100, 180, 45], [160, 180, 135]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[100, 220], [130, 70], [160, 220]] },
+            { points: [[85, 145], [175, 145]] }
+          ],
+          arrows: [[130, 145, 180], [130, 145, 0], [115, 145, 0]]
+        }
+      },
+      B: {
+        print: { cells: new Set(), arrows: [[85, 100, 90], [130, 130, 0], [130, 180, 0], [85, 220, 90]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[100, 70], [100, 220], [160, 180]] },
+            { points: [[100, 145], [160, 110]] }
+          ],
+          arrows: [[100, 145, 90], [130, 145, 0]]
+        }
+      },
+      C: {
+        print: { cells: new Set(), arrows: [[160, 80, 270], [130, 130, 180], [160, 180, 270]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[160, 80], [100, 130], [160, 180]] }
+          ],
+          arrows: [[160, 80, 270], [130, 130, 180]]
+        }
+      },
+      D: {
+        print: { cells: new Set(), arrows: [[85, 100, 90], [130, 130, 0], [85, 160, 90], [130, 200, 180]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[100, 70], [100, 220], [160, 145]] }
+          ],
+          arrows: [[100, 145, 90], [130, 145, 0]]
+        }
+      },
+      E: {
+        print: { cells: new Set(), arrows: [[160, 90, 180], [130, 130, 180], [160, 170, 180], [130, 210, 180]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[160, 70], [100, 70], [100, 220], [160, 220]] },
+            { points: [[100, 145], [150, 145]] }
+          ],
+          arrows: [[130, 145, 180], [100, 145, 90]]
+        }
+      },
+      F: {
+        print: { cells: new Set(), arrows: [[160, 90, 180], [130, 130, 180], [85, 160, 90], [130, 210, 90]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[160, 70], [100, 70], [100, 220]] },
+            { points: [[100, 145], [150, 145]] }
+          ],
+          arrows: [[130, 145, 180], [100, 145, 90]]
+        }
+      },
+      G: {
+        print: { cells: new Set(), arrows: [[160, 80, 270], [130, 130, 180], [160, 180, 270], [130, 180, 0]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[160, 80], [100, 130], [160, 180], [160, 145], [120, 145]] }
+          ],
+          arrows: [[160, 80, 270], [130, 130, 180], [130, 165, 0]]
+        }
+      },
+      H: {
+        print: { cells: new Set(), arrows: [[85, 100, 90], [85, 160, 90], [130, 130, 0], [160, 100, 90]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[100, 70], [100, 220]] },
+            { points: [[100, 145], [160, 145]] },
+            { points: [[160, 70], [160, 220]] }
+          ],
+          arrows: [[100, 145, 90], [130, 145, 0], [160, 145, 90]]
+        }
+      },
+      I: {
+        print: { cells: new Set(), arrows: [[130, 100, 90], [130, 145, 90], [130, 190, 90]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[130, 70], [130, 220]] }
+          ],
+          arrows: [[130, 145, 90]]
+        }
+      },
+      J: {
+        print: { cells: new Set(), arrows: [[160, 100, 90], [130, 145, 0], [85, 180, 180]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[160, 70], [160, 180], [100, 220]] }
+          ],
+          arrows: [[160, 145, 90], [130, 200, 180]]
+        }
+      },
+      K: {
+        print: { cells: new Set(), arrows: [[85, 100, 90], [130, 130, 45], [85, 160, 90], [130, 200, 315]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[100, 70], [100, 220]] },
+            { points: [[160, 80], [100, 130]] },
+            { points: [[100, 130], [160, 200]] }
+          ],
+          arrows: [[100, 145, 90], [130, 105, 315], [130, 165, 45]]
+        }
+      },
+      L: {
+        print: { cells: new Set(), arrows: [[85, 100, 90], [85, 160, 90], [130, 210, 0]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[100, 70], [100, 220], [160, 220]] }
+          ],
+          arrows: [[100, 145, 90], [130, 220, 0]]
+        }
+      },
+      M: {
+        print: { cells: new Set(), arrows: [[85, 220, 90], [130, 100, 45], [130, 180, 315], [160, 220, 90]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[85, 220], [100, 70], [130, 140], [160, 70], [175, 220]] }
+          ],
+          arrows: [[100, 145, 315], [130, 105, 315], [160, 145, 45]]
+        }
+      },
+      N: {
+        print: { cells: new Set(), arrows: [[85, 220, 90], [130, 100, 45], [160, 220, 90]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[100, 220], [100, 70], [160, 220], [160, 70]] }
+          ],
+          arrows: [[100, 145, 90], [130, 145, 315], [160, 145, 90]]
+        }
+      },
+      O: {
+        print: { cells: new Set(), arrows: [[130, 80, 0], [160, 130, 90], [130, 180, 180], [100, 130, 270]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[130, 70], [160, 100], [160, 160], [130, 190], [100, 160], [100, 100], [130, 70]] }
+          ],
+          arrows: [[130, 80, 0], [160, 130, 90], [130, 180, 180]]
+        }
+      },
+      P: {
+        print: { cells: new Set(), arrows: [[85, 160, 90], [130, 110, 0], [85, 100, 90], [130, 220, 90]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[100, 220], [100, 70], [160, 100], [160, 145], [100, 145]] }
+          ],
+          arrows: [[100, 145, 90], [130, 105, 0]]
+        }
+      },
+      Q: {
+        print: { cells: new Set(), arrows: [[130, 80, 0], [160, 130, 90], [130, 180, 180], [100, 130, 270], [160, 220, 315]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[130, 70], [160, 100], [160, 160], [130, 190], [100, 160], [100, 100], [130, 70]] },
+            { points: [[130, 190], [160, 230]] }
+          ],
+          arrows: [[130, 80, 0], [130, 180, 180], [145, 210, 45]]
+        }
+      },
+      R: {
+        print: { cells: new Set(), arrows: [[85, 160, 90], [130, 110, 0], [85, 100, 90], [130, 145, 315]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[100, 220], [100, 70], [160, 100], [160, 145], [100, 145], [160, 220]] }
+          ],
+          arrows: [[100, 145, 90], [130, 105, 0], [130, 182, 315]]
+        }
+      },
+      S: {
+        print: { cells: new Set(), arrows: [[160, 90, 180], [130, 110, 270], [130, 150, 90], [130, 190, 0]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[160, 80], [100, 100], [150, 130], [110, 160], [160, 190]] }
+          ],
+          arrows: [[130, 110, 270], [130, 160, 90]]
+        }
+      },
+      T: {
+        print: { cells: new Set(), arrows: [[130, 70, 0], [130, 100, 90], [130, 180, 90]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[70, 70], [190, 70]] },
+            { points: [[130, 70], [130, 220]] }
+          ],
+          arrows: [[130, 70, 0], [130, 145, 90]]
+        }
+      },
+      U: {
+        print: { cells: new Set(), arrows: [[85, 100, 90], [100, 200, 0], [160, 200, 0], [160, 100, 90]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[100, 70], [100, 180], [130, 220], [160, 180], [160, 70]] }
+          ],
+          arrows: [[100, 145, 90], [130, 220, 0], [160, 145, 90]]
+        }
+      },
+      V: {
+        print: { cells: new Set(), arrows: [[85, 80, 45], [130, 190, 315], [175, 80, 315]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[85, 70], [130, 220], [175, 70]] }
+          ],
+          arrows: [[107, 145, 45], [130, 190, 315], [153, 145, 315]]
+        }
+      },
+      W: {
+        print: { cells: new Set(), arrows: [[70, 80, 45], [110, 190, 315], [130, 140, 45], [150, 190, 45], [190, 80, 315]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[70, 70], [95, 220], [130, 140], [165, 220], [190, 70]] }
+          ],
+          arrows: [[97, 145, 45], [130, 180, 270], [163, 145, 315]]
+        }
+      },
+      X: {
+        print: { cells: new Set(), arrows: [[85, 80, 45], [130, 130, 45], [175, 180, 315], [130, 130, 315]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[85, 70], [175, 220]] },
+            { points: [[175, 70], [85, 220]] }
+          ],
+          arrows: [[130, 145, 45], [130, 145, 315]]
+        }
+      },
+      Y: {
+        print: { cells: new Set(), arrows: [[85, 80, 45], [130, 130, 90], [175, 80, 315], [130, 220, 90]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[85, 70], [130, 130], [175, 70]] },
+            { points: [[130, 130], [130, 220]] }
+          ],
+          arrows: [[130, 100, 45], [130, 175, 90]]
+        }
+      },
+      Z: {
+        print: { cells: new Set(), arrows: [[160, 70, 0], [130, 130, 315], [85, 190, 0]] },
+        cursive: {
+          cells: new Set(),
+          strokes: [
+            { points: [[160, 70], [85, 190]] },
+            { points: [[70, 70], [175, 70]] },
+            { points: [[70, 220], [175, 220]] }
+          ],
+          arrows: [[117, 130, 315], [120, 70, 0], [122, 220, 0]]
+        }
+      }
+    };
+
+    ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].forEach(d => {
+      letterPaths[d] = {
+        print: { cells: new Set(), arrows: [] },
+        cursive: null
+      };
+    });
+
+    function drawArrows(ctx, arrowList, color, scale) {
+      const headLen = 12 * scale;
+      const lineLen = 8 * scale;
+      const lineWidth = 2;
+
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = lineWidth;
+
+      arrowList.forEach(([x, y, angleDeg]) => {
+        const angleRad = (angleDeg * Math.PI) / 180;
+
+        const tipX = x + Math.cos(angleRad) * headLen;
+        const tipY = y + Math.sin(angleRad) * headLen;
+        const leftX = x + Math.cos(angleRad + 2.5) * headLen * 0.5;
+        const leftY = y + Math.sin(angleRad + 2.5) * headLen * 0.5;
+        const rightX = x + Math.cos(angleRad - 2.5) * headLen * 0.5;
+        const rightY = y + Math.sin(angleRad - 2.5) * headLen * 0.5;
+
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(leftX, leftY);
+        ctx.lineTo(rightX, rightY);
+        ctx.closePath();
+        ctx.fill();
+
+        const tailX = x - Math.cos(angleRad) * lineLen;
+        const tailY = y - Math.sin(angleRad) * lineLen;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(tailX, tailY);
+        ctx.stroke();
+      });
+    }
+
+    function drawCursiveLetterPath(ctx, char, options) {
+      const charData = letterPaths[char];
+      if (!charData || !charData.cursive) return;
+
+      const { strokes } = charData.cursive;
+      const { fillStyle = '#000', strokeStyle = '#000', lineWidth = 12 } = options;
+
+      ctx.strokeStyle = strokeStyle;
+      ctx.fillStyle = fillStyle;
+      ctx.lineWidth = lineWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      strokes.forEach(stroke => {
+        const { points } = stroke;
+        if (points.length === 0) return;
+        ctx.beginPath();
+        ctx.moveTo(points[0][0], points[0][1]);
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i][0], points[i][1]);
+        }
+        ctx.stroke();
+      });
+    }
+
+    function drawGuideCursive(char) {
+      const gctx = guideCanvas.getContext('2d');
+      gctx.clearRect(0, 0, 260, 260);
+
+      const charData = letterPaths[char];
+      if (charData && charData.cursive && charData.cursive.strokes) {
+        drawCursiveLetterPath(gctx, char, { strokeStyle: '#E8E8E8', fillStyle: '#E8E8E8', lineWidth: 14 });
+
+        const arrowColor = '#4ECDC4';
+        if (charData.cursive.arrows) {
+          drawArrows(gctx, charData.cursive.arrows, arrowColor, 0.7);
+        }
+      } else {
+        gctx.font = '900 190px Arial, sans-serif';
+        gctx.textAlign = 'center';
+        gctx.textBaseline = 'middle';
+        gctx.fillStyle = '#E8E8E8';
+        gctx.fillText(char, 130, 130);
+        gctx.strokeStyle = '#D0D0D0';
+        gctx.lineWidth = 3;
+        gctx.strokeText(char, 130, 130);
+      }
+    }
+
+    function extractCellsFromCursive(char) {
+      const oc = document.createElement('canvas');
+      oc.width = 260; oc.height = 260;
+      const octx = oc.getContext('2d');
+
+      const charData = letterPaths[char];
+      if (charData && charData.cursive && charData.cursive.strokes) {
+        drawCursiveLetterPath(octx, char, { strokeStyle: '#000', fillStyle: '#000', lineWidth: 14 });
+      } else {
+        octx.font = '900 190px Arial, sans-serif';
+        octx.textAlign = 'center';
+        octx.textBaseline = 'middle';
+        octx.fillStyle = '#000';
+        octx.fillText(char, 130, 130);
+      }
+
+      const data = octx.getImageData(0, 0, 260, 260).data;
+      const cells = new Set();
+      for (let gy = 0; gy < Math.ceil(260 / GRID); gy++) {
+        for (let gx = 0; gx < Math.ceil(260 / GRID); gx++) {
+          let found = false;
+          for (let dy = 0; dy < GRID && !found; dy++) {
+            for (let dx = 0; dx < GRID && !found; dx++) {
+              const px = gx * GRID + dx, py = gy * GRID + dy;
+              if (px < 260 && py < 260 && data[(py * 260 + px) * 4 + 3] > 60) found = true;
+            }
+          }
+          if (found) cells.add(`${gx},${gy}`);
+        }
+      }
+      return cells;
+    }
+
     class TracingGame extends KidsGame {
       init() {
-        document.querySelectorAll('.mode-card').forEach(btn =>
-          btn.addEventListener('click', () => { this._ctx(); startGame(btn.dataset.mode); }));
+        document.querySelectorAll('#style-cards .mode-card').forEach(btn =>
+          btn.addEventListener('click', () => { this._ctx(); onStyleSelect(btn.dataset.style); }));
+        document.querySelectorAll('#screen-difficulty .mode-card').forEach(btn =>
+          btn.addEventListener('click', () => { this._ctx(); startGame(currentStyle, btn.dataset.mode); }));
         clearBtn.addEventListener('click', clearDrawing);
         backBtn.addEventListener('click', () => {
-          if (screenGame.style.display !== 'none') showModeSelect();
+          if (screenGame.style.display !== 'none') showStyleSelect();
+          else if (screenDifficulty.style.display !== 'none') showStyleSelect();
           else this.home();
         });
         bindDrawing();
       }
     }
 
-    function startGame(modeKey) {
+    function onStyleSelect(style) {
+      currentStyle = style;
+      screenMode.style.display = 'none';
+      screenDifficulty.style.display = 'flex';
+    }
+
+    function showStyleSelect() {
+      screenGame.style.display = 'none';
+      screenDifficulty.style.display = 'none';
+      screenMode.style.display = 'flex';
+    }
+
+    function startGame(styleKey, modeKey) {
+      currentStyle = styleKey;
       currentMode = modeKey;
       const pool = modeKey === 'letters' ? [...LETTERS]
                  : modeKey === 'numbers' ? [...NUMBERS]
                  : [...LETTERS, ...NUMBERS];
-      session = shuffle(pool).slice(0, SESSION_LEN);
+      session = shuffle(pool).map(char => {
+        if (modeKey === 'numbers' || !LETTERS.includes(char)) {
+          return { char, style: 'print' };
+        }
+        if (styleKey === 'mix') {
+          return { char, style: Math.random() < 0.5 ? 'print' : 'cursive' };
+        }
+        return { char, style: styleKey };
+      }).slice(0, SESSION_LEN);
       charIndex = 0;
       clears = 0;
       screenMode.style.display = 'none';
+      screenDifficulty.style.display = 'none';
       screenGame.style.display = 'flex';
       renderDots();
       loadChar(session[0]);
-    }
-
-    function showModeSelect() {
-      screenGame.style.display = 'none';
-      screenMode.style.display = 'flex';
     }
 
     function renderDots() {
@@ -192,27 +651,37 @@
       }
     }
 
-    function loadChar(char) {
+    function loadChar(charObj) {
       locked = false;
       coveredCells = new Set();
       drawCtx.clearRect(0, 0, 260, 260);
       progressFill.style.width = '0%';
       checkFlash.classList.remove('show');
-      drawGuide(char);
-      letterCells = buildLetterMap(char);
-    }
 
-    function drawGuide(char) {
-      const gctx = guideCanvas.getContext('2d');
-      gctx.clearRect(0, 0, 260, 260);
-      gctx.font = '900 190px Arial, sans-serif';
-      gctx.textAlign = 'center';
-      gctx.textBaseline = 'middle';
-      gctx.fillStyle = '#E8E8E8';
-      gctx.fillText(char, 130, 130);
-      gctx.strokeStyle = '#D0D0D0';
-      gctx.lineWidth = 3;
-      gctx.strokeText(char, 130, 130);
+      const char = charObj.char;
+      currentLetterStyle = charObj.style;
+
+      if (currentLetterStyle === 'cursive' && LETTERS.includes(char)) {
+        drawGuideCursive(char);
+        letterCells = extractCellsFromCursive(char);
+      } else {
+        const gctx = guideCanvas.getContext('2d');
+        gctx.clearRect(0, 0, 260, 260);
+        gctx.font = '900 190px Arial, sans-serif';
+        gctx.textAlign = 'center';
+        gctx.textBaseline = 'middle';
+        gctx.fillStyle = '#E8E8E8';
+        gctx.fillText(char, 130, 130);
+        gctx.strokeStyle = '#D0D0D0';
+        gctx.lineWidth = 3;
+        gctx.strokeText(char, 130, 130);
+
+        if (letterPaths[char] && letterPaths[char].print.arrows.length > 0) {
+          drawArrows(gctx, letterPaths[char].print.arrows, '#4ECDC4', 0.7);
+        }
+
+        letterCells = buildLetterMap(char);
+      }
     }
 
     function buildLetterMap(char) {
@@ -308,7 +777,7 @@
         renderDots();
         if (charIndex >= session.length) {
           const stars = clears <= 1 ? 3 : clears <= 4 ? 2 : 1;
-          game.showWin(stars, cb => { if (cb === 'again') startGame(currentMode); });
+          game.showWin(stars, cb => { if (cb === 'again') startGame(currentStyle, currentMode); });
         } else {
           loadChar(session[charIndex]);
         }
