@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Word Factory</title>
+  <link rel="stylesheet" href="/css/kids.css">
+  <style>
+    body { background: linear-gradient(160deg, #f6d365 0%, #fda085 100%); }
+
+    #screen-mode {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 28px; padding: 20px;
+    }
+    .mode-title {
+      font-size: clamp(32px, 7vw, 56px); font-weight: 900;
+      color: white; text-shadow: 0 3px 12px rgba(0,0,0,.2);
+    }
+    .mode-cards {
+      display: grid; grid-template-columns: 1fr; gap: 20px;
+      width: 100%; max-width: 420px;
+    }
+    .mode-card {
+      background: white; border-radius: 24px; padding: 24px 16px;
+      text-align: center; cursor: pointer; box-shadow: 0 8px 32px rgba(0,0,0,.12);
+      transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+      display: flex; flex-direction: column; gap: 8px; align-items: center;
+      border: none; font-family: inherit;
+    }
+    .mode-card:active { transform: scale(.93); }
+    .mode-card-icon  { font-size: clamp(40px, 9vw, 60px); line-height: 1; }
+    .mode-card-label { font-size: clamp(22px, 4.5vw, 30px); font-weight: 900; color: #1A202C; }
+    .mode-card-sub   { font-size: 14px; font-weight: 700; color: #718096; }
+
+    #screen-game { display: none; flex: 1; flex-direction: column; align-items: center; width: 100%; }
+
+    .fac-header {
+      width: 100%; padding: 72px 24px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .fac-score {
+      font-size: 20px; font-weight: 900; color: white;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .fac-content {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: clamp(18px, 4vh, 36px);
+      padding: 0 20px 24px; width: 100%; max-width: 600px;
+    }
+
+    .clue-card {
+      background: white; border-radius: 20px; padding: 16px 28px;
+      font-size: clamp(22px, 5vw, 32px); font-weight: 900; color: #1A202C;
+      box-shadow: 0 8px 28px rgba(0,0,0,.18);
+      cursor: pointer; border: none; font-family: inherit;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .clue-card .spk { font-size: clamp(20px, 5vw, 30px); }
+
+    .word-frame {
+      display: flex; gap: 10px; align-items: center; justify-content: center;
+      flex-wrap: wrap;
+    }
+    .frame-block {
+      background: rgba(255,255,255,.9); border-radius: 14px;
+      padding: 12px 18px; font-size: clamp(26px, 6vw, 40px); font-weight: 900;
+      color: #1A202C;
+    }
+    .frame-slot {
+      border-radius: 14px; padding: 12px 18px;
+      min-width: clamp(54px, 12vw, 88px); text-align: center;
+      font-size: clamp(26px, 6vw, 40px); font-weight: 900;
+      border: 3px dashed rgba(0,0,0,.25); background: rgba(255,255,255,.25);
+      color: rgba(0,0,0,.3);
+      transition: transform .15s, background .15s;
+    }
+    .frame-slot.filled {
+      background: #6BCB77; color: white; border: 3px solid transparent;
+      transform: scale(1.06);
+    }
+    .word-joined {
+      background: rgba(255,255,255,.95); border-radius: 16px;
+      padding: 14px 26px; font-size: clamp(28px, 7vw, 46px); font-weight: 900;
+      color: #1A202C;
+    }
+
+    .tile-rows { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+    .tile-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .tile {
+      height: clamp(56px, 9.5vw, 84px); padding: 0 18px;
+      border-radius: 14px; font-size: clamp(24px, 5vw, 40px); font-weight: 900;
+      border: none; cursor: pointer; font-family: inherit;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,.2);
+      transition: transform .1s, opacity .2s;
+    }
+    .tile:active { transform: scale(.9); }
+    .tile[disabled] { opacity: 0; pointer-events: none; }
+
+    .word-done-flash {
+      position: fixed; inset: 0; z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(107,203,119,.85);
+      font-size: 80px; animation: flash-in .25s ease; pointer-events: none;
+    }
+    @keyframes flash-in {
+      from { opacity: 0; transform: scale(.5); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <button class="nav-back" id="back-btn">←</button>
+
+  <div id="screen-mode">
+    <div class="mode-title">Word Factory 🏭</div>
+    <div class="mode-cards">
+      <button class="mode-card" data-level="1" style="border-top:6px solid #6BCB77">
+        <span class="mode-card-icon">🔧</span>
+        <span class="mode-card-label">Prefixes</span>
+        <span class="mode-card-sub">Ages 8+ • un re dis mis</span>
+      </button>
+      <button class="mode-card" data-level="2" style="border-top:6px solid #FB923C">
+        <span class="mode-card-icon">🔩</span>
+        <span class="mode-card-label">Suffixes</span>
+        <span class="mode-card-sub">Ages 8+ • ful less ly er est</span>
+      </button>
+      <button class="mode-card" data-level="3" style="border-top:6px solid #A78BFA">
+        <span class="mode-card-icon">🏭</span>
+        <span class="mode-card-label">Full Factory</span>
+        <span class="mode-card-sub">Ages 9+ • prefix + suffix</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="screen-game">
+    <div class="fac-header">
+      <div class="progress-dots" id="progress"></div>
+      <div class="fac-score">⭐ <span id="score-val">0</span></div>
+    </div>
+
+    <div class="fac-content">
+      <button class="clue-card" id="clue-card"></button>
+      <div class="word-frame" id="word-frame"></div>
+      <div class="tile-rows" id="tile-rows"></div>
+    </div>
+  </div>
+
+  <script src="/games/_lib/confetti.js"></script>
+  <script src="/games/_lib/KidsGame.js"></script>
+  <script src="/games/_lib/words-au.js"></script>
+  <script>
+    const ROUND = 6;
+
+    let game, level, puzzles, pIndex, score, totalMistakes;
+    let puzzle, wrongs, preFilled, sufFilled;
+
+    const screenMode = document.getElementById('screen-mode');
+    const screenGame = document.getElementById('screen-game');
+    const progressEl = document.getElementById('progress');
+    const scoreEl    = document.getElementById('score-val');
+    const clueCard   = document.getElementById('clue-card');
+    const frameEl    = document.getElementById('word-frame');
+    const tileRowsEl = document.getElementById('tile-rows');
+    const backBtn    = document.getElementById('back-btn');
+
+    class FactoryGame extends KidsGame {
+      init() {
+        document.querySelectorAll('.mode-card').forEach(btn =>
+          btn.addEventListener('click', () => { this._ctx(); startGame(parseInt(btn.dataset.level)); }));
+        clueCard.addEventListener('click', () => { game._ctx(); AU.speak(puzzle.clue); });
+        backBtn.addEventListener('click', () => {
+          if (screenGame.style.display !== 'none') showLevelSelect();
+          else this.home();
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      game = new FactoryGame({ name: 'Word Factory' });
+      game.init();
+    });
+
+    function startGame(lvl) {
+      level = lvl;
+      screenMode.style.display = 'none';
+      screenGame.style.display = 'flex';
+      puzzles = AU.shuffle([...AU.FACTORY[level]]).slice(0, ROUND);
+      pIndex = 0;
+      score = 0;
+      totalMistakes = 0;
+      scoreEl.textContent = '0';
+      renderProgress();
+      renderPuzzle();
+    }
+
+    function showLevelSelect() {
+      screenGame.style.display = 'none';
+      screenMode.style.display = 'flex';
+    }
+
+    function renderProgress() {
+      progressEl.innerHTML = '';
+      for (let i = 0; i < ROUND; i++) {
+        const d = document.createElement('div');
+        d.className = 'dot' + (i < pIndex ? ' done' : i === pIndex ? ' current' : '');
+        progressEl.appendChild(d);
+      }
+    }
+
+    function pickOthers(pool, exclude, n) {
+      const out = [];
+      for (const a of AU.shuffle([...pool])) {
+        if (out.length === n) break;
+        if (a === exclude || out.includes(a)) continue;
+        out.push(a);
+      }
+      return out;
+    }
+
+    function renderPuzzle() {
+      puzzle = puzzles[pIndex];
+      wrongs = 0;
+      preFilled = false;
+      sufFilled = false;
+
+      clueCard.innerHTML = `"${puzzle.clue}" <span class="spk">🔊</span>`;
+      setTimeout(() => AU.speak(puzzle.clue), 400);
+
+      frameEl.innerHTML = '';
+      tileRowsEl.innerHTML = '';
+
+      if (level === 3) {
+        frameEl.appendChild(makeSlot('pre'));
+        frameEl.appendChild(makeBase(puzzle.base));
+        frameEl.appendChild(makeSlot('suf'));
+
+        const preTiles = AU.shuffle([...AU.FACTORY_AFFIXES.pre]);
+        const sufTiles = AU.shuffle([puzzle.suf, ...pickOthers(AU.FACTORY_AFFIXES.suf, puzzle.suf, 3)]);
+        tileRowsEl.appendChild(makeRow(preTiles, 'pre'));
+        tileRowsEl.appendChild(makeRow(sufTiles, 'suf'));
+      } else {
+        if (puzzle.pos === 'pre') {
+          frameEl.appendChild(makeSlot('pre'));
+          frameEl.appendChild(makeBase(puzzle.base));
+        } else {
+          frameEl.appendChild(makeBase(puzzle.base));
+          frameEl.appendChild(makeSlot('suf'));
+        }
+        const tiles = AU.shuffle([puzzle.affix, ...pickOthers(AU.FACTORY_AFFIXES[puzzle.pos], puzzle.affix, 3)]);
+        tileRowsEl.appendChild(makeRow(tiles, puzzle.pos));
+      }
+    }
+
+    function makeSlot(pos) {
+      const s = document.createElement('div');
+      s.className = 'frame-slot';
+      s.dataset.slot = pos;
+      s.textContent = '?';
+      return s;
+    }
+
+    function makeBase(text) {
+      const b = document.createElement('div');
+      b.className = 'frame-block';
+      b.textContent = text;
+      return b;
+    }
+
+    function makeRow(affixes, pos) {
+      const row = document.createElement('div');
+      row.className = 'tile-row';
+      affixes.forEach((a, i) => {
+        const t = document.createElement('button');
+        t.className = `tile tc${i % 6}`;
+        t.textContent = a;
+        t.dataset.affix = a;
+        t.dataset.pos = pos;
+        t.addEventListener('click', () => tapTile(t));
+        row.appendChild(t);
+      });
+      return row;
+    }
+
+    function slotFor(pos) {
+      return frameEl.querySelector(`.frame-slot[data-slot="${pos}"]`);
+    }
+
+    function tapTile(tile) {
+      game._ctx();
+      if (tile.disabled) return;
+      const pos = tile.dataset.pos;
+      const answer = pos === 'pre' ? (level === 3 ? puzzle.pre : puzzle.affix)
+                                   : (level === 3 ? puzzle.suf : puzzle.affix);
+      if (tile.dataset.affix === answer) {
+        const slot = slotFor(pos);
+        slot.textContent = tile.dataset.affix;
+        slot.classList.add('filled');
+        tile.disabled = true;
+        game.sound('pop');
+        if (pos === 'pre') preFilled = true; else sufFilled = true;
+
+        const done = level === 3 ? (preFilled && sufFilled) : true;
+        if (done) completePuzzle();
+      } else {
+        game.wrong(tile);
+        wrongs++;
+        totalMistakes++;
+        if (wrongs >= 2) showHint();
+      }
+    }
+
+    function showHint() {
+      tileRowsEl.querySelectorAll('.kg-hint').forEach(t => t.classList.remove('kg-hint'));
+      if (level === 3) {
+        if (!preFilled) hintTile('pre', puzzle.pre);
+        if (!sufFilled) hintTile('suf', puzzle.suf);
+      } else {
+        hintTile(puzzle.pos, puzzle.affix);
+      }
+    }
+
+    function hintTile(pos, answer) {
+      tileRowsEl.querySelectorAll(`.tile[data-pos="${pos}"]`).forEach(t => {
+        if (!t.disabled && t.dataset.affix === answer) t.classList.add('kg-hint');
+      });
+    }
+
+    function completePuzzle() {
+      frameEl.innerHTML = `<div class="word-joined">${puzzle.word}</div>`;
+      AU.speak(puzzle.word);
+      score += Math.max(10, 30 - wrongs * 10);
+      scoreEl.textContent = score;
+
+      setTimeout(() => {
+        const flash = document.createElement('div');
+        flash.className = 'word-done-flash';
+        flash.textContent = '🎉';
+        document.body.appendChild(flash);
+        game.sound('cheer');
+        setTimeout(() => {
+          flash.remove();
+          pIndex++;
+          renderProgress();
+          if (pIndex >= ROUND) {
+            const stars = totalMistakes <= 2 ? 3 : totalMistakes <= 5 ? 2 : 1;
+            game.showWin(stars, action => { if (action === 'again') startGame(level); });
+          } else {
+            renderPuzzle();
+          }
+        }, 700);
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
