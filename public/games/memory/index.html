@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Memory</title>
+  <link rel="stylesheet" href="/css/kids.css">
+  <style>
+    body {
+      background: linear-gradient(160deg, #667eea 0%, #764ba2 100%);
+    }
+
+    #screen-mode {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 28px; padding: 20px;
+    }
+    .mode-title {
+      font-size: clamp(32px, 7vw, 60px); font-weight: 900;
+      color: white; text-shadow: 0 3px 12px rgba(0,0,0,.2);
+    }
+    .mode-cards {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+      width: 100%; max-width: 560px;
+    }
+    .mode-card {
+      background: white; border-radius: 24px; padding: 28px 12px;
+      text-align: center; cursor: pointer; box-shadow: 0 8px 32px rgba(0,0,0,.12);
+      transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+      display: flex; flex-direction: column; gap: 8px; align-items: center;
+      border: none; font-family: inherit;
+    }
+    .mode-card:active { transform: scale(.93); }
+    .mode-card-icon  { font-size: clamp(40px, 9vw, 64px); line-height: 1; }
+    .mode-card-label { font-size: clamp(20px, 4vw, 28px); font-weight: 900; color: #1A202C; }
+    .mode-card-sub   { font-size: 13px; font-weight: 700; color: #718096; }
+    .mode-card-best  { font-size: 14px; font-weight: 900; color: #FB923C; min-height: 18px; }
+    .mode-card--easy   { border-top: 6px solid #6BCB77; }
+    .mode-card--medium { border-top: 6px solid #FB923C; }
+    .mode-card--hard   { border-top: 6px solid #FF6B6B; }
+
+    #screen-game { display: none; flex: 1; flex-direction: column; align-items: center; width: 100%; }
+
+    .mem-header {
+      width: 100%; padding: 72px 24px 8px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex-shrink: 0;
+    }
+    .mem-stat {
+      font-size: 20px; font-weight: 900; color: white;
+      display: flex; align-items: center; gap: 6px;
+      text-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+
+    .grid {
+      flex: 1; display: grid; gap: clamp(8px, 1.8vw, 14px);
+      padding: 12px 16px 24px; width: 100%; max-width: 560px;
+      align-content: center; justify-content: center; margin: 0 auto;
+    }
+
+    .mcard { background: none; border: none; padding: 0; perspective: 600px; cursor: pointer; font-family: inherit; aspect-ratio: 3/4; }
+    .mcard-inner {
+      position: relative; width: 100%; height: 100%;
+      transform-style: preserve-3d;
+      transition: transform .4s cubic-bezier(.4, 1.4, .6, 1);
+    }
+    .mcard.flipped .mcard-inner { transform: rotateY(180deg); }
+    .mcard-face {
+      position: absolute; inset: 0;
+      backface-visibility: hidden; -webkit-backface-visibility: hidden;
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,.18);
+    }
+    .mcard-back {
+      background: linear-gradient(145deg, #FF6B6B, #FB923C);
+      color: rgba(255,255,255,.9);
+      font-size: clamp(28px, 6vw, 44px); font-weight: 900;
+    }
+    .mcard-front {
+      background: white;
+      transform: rotateY(180deg);
+      font-size: clamp(32px, 8vw, 56px);
+    }
+    .mcard.matched { pointer-events: none; }
+    .mcard.matched .mcard-inner { animation: matched-pop .45s cubic-bezier(.34,1.56,.64,1); }
+    .mcard.matched .mcard-front { box-shadow: 0 0 0 4px var(--green), 0 4px 14px rgba(0,0,0,.18); }
+    @keyframes matched-pop {
+      0% { transform: rotateY(180deg) scale(1); }
+      50% { transform: rotateY(180deg) scale(1.12); }
+      100% { transform: rotateY(180deg) scale(1); }
+    }
+
+    .pts-pop {
+      position: fixed; z-index: 600; transform: translateX(-50%);
+      font-size: 28px; font-weight: 900; color: var(--yellow);
+      text-shadow: 0 2px 8px rgba(0,0,0,.35);
+      pointer-events: none;
+      animation: pts-rise .9s ease-out forwards;
+    }
+    @keyframes pts-rise {
+      from { opacity: 1; translate: 0 0; }
+      to   { opacity: 0; translate: 0 -70px; }
+    }
+  </style>
+</head>
+<body>
+  <button class="nav-back" id="back-btn">←</button>
+
+  <div id="screen-mode">
+    <div class="mode-title">Memory 🧠</div>
+    <div class="mode-cards" id="mode-cards"></div>
+  </div>
+
+  <div id="screen-game">
+    <div class="mem-header">
+      <div class="mem-stat" id="score-box">⭐ <span id="score-val">0</span></div>
+      <div class="mem-stat" id="time-box">⏱ <span id="time-val">0:00</span></div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <script src="/games/_lib/confetti.js"></script>
+  <script src="/games/_lib/KidsGame.js"></script>
+  <script>
+    const DIFFICULTIES = {
+      easy:   { label: 'Easy',   icon: '🐣', pairs: 3, cols: 3 },
+      medium: { label: 'Medium', icon: '🦊', pairs: 6, cols: 4 },
+      hard:   { label: 'Hard',   icon: '🦁', pairs: 8, cols: 4 },
+    };
+
+    const EMOJI_POOL = ['🐶','🐱','🦊','🐸','🐵','🦄','🐢','🐠','🦋','🐝',
+                        '🍎','🍌','🍓','🍕','🍦','🚀','🚗','⚽','🌈','⭐'];
+
+    const screenMode  = document.getElementById('screen-mode');
+    const screenGame  = document.getElementById('screen-game');
+    const modeCardsEl = document.getElementById('mode-cards');
+    const gridEl      = document.getElementById('grid');
+    const scoreEl     = document.getElementById('score-val');
+    const timeEl      = document.getElementById('time-val');
+    const backBtn     = document.getElementById('back-btn');
+
+    let game;
+
+    function shuffle(a) {
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function pairPoints(elapsedMs) {
+      return Math.max(20, 100 - Math.floor(elapsedMs / 1000) * 5);
+    }
+
+    function bestKey(difficulty) {
+      return `memory-best-${difficulty}`;
+    }
+
+    function getBest(difficulty) {
+      return parseInt(localStorage.getItem(bestKey(difficulty)) ?? '0');
+    }
+
+    function formatTime(ms) {
+      const total = Math.floor(ms / 1000);
+      const m = Math.floor(total / 60);
+      const s = total % 60;
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    function popPoints(card, pts) {
+      const el = document.createElement('div');
+      el.className = 'pts-pop';
+      el.textContent = `+${pts}`;
+      const r = card.getBoundingClientRect();
+      el.style.left = (r.left + r.width / 2) + 'px';
+      el.style.top = r.top + 'px';
+      document.body.appendChild(el);
+      el.addEventListener('animationend', () => el.remove(), { once: true });
+    }
+
+    function renderModeCards() {
+      modeCardsEl.innerHTML = '';
+      Object.entries(DIFFICULTIES).forEach(([key, cfg]) => {
+        const best = getBest(key);
+        const btn = document.createElement('button');
+        btn.className = `mode-card mode-card--${key}`;
+        btn.dataset.difficulty = key;
+        btn.innerHTML = `
+          <span class="mode-card-icon">${cfg.icon}</span>
+          <span class="mode-card-label">${cfg.label}</span>
+          <span class="mode-card-sub">${cfg.pairs * 2} cards</span>
+          <span class="mode-card-best">${best > 0 ? `Best: ⭐ ${best}` : ''}</span>`;
+        btn.addEventListener('click', () => {
+          game._ctx();
+          showGameScreen();
+          game.startRound(key);
+        });
+        modeCardsEl.appendChild(btn);
+      });
+    }
+
+    function showModeSelect() {
+      screenGame.style.display = 'none';
+      screenMode.style.display = 'flex';
+    }
+
+    function showGameScreen() {
+      screenMode.style.display = 'none';
+      screenGame.style.display = 'flex';
+    }
+
+    class MemoryGame extends KidsGame {
+      init() {
+        this.score = 0;
+        this.difficulty = null;
+        this.cfg = null;
+        this.firstCard = null;
+        this.lock = false;
+        this.matchedCount = 0;
+        this.pairStart = 0;
+        this.roundStart = 0;
+        this.clockTimer = null;
+
+        renderModeCards();
+
+        backBtn.addEventListener('click', () => {
+          if (screenGame.style.display !== 'none') {
+            this.stopClock();
+            showModeSelect();
+          } else {
+            this.home();
+          }
+        });
+      }
+
+      stopClock() {
+        if (this.clockTimer) {
+          clearInterval(this.clockTimer);
+          this.clockTimer = null;
+        }
+      }
+
+      startRound(difficulty) {
+        this.difficulty = difficulty;
+        this.cfg = DIFFICULTIES[difficulty];
+
+        this.score = 0;
+        this.firstCard = null;
+        this.lock = false;
+        this.matchedCount = 0;
+        this.pairStart = Date.now();
+        this.roundStart = Date.now();
+
+        scoreEl.textContent = '0';
+        timeEl.textContent = '0:00';
+
+        this.buildGrid();
+        this.startClock();
+      }
+
+      startClock() {
+        this.stopClock();
+        this.clockTimer = setInterval(() => {
+          timeEl.textContent = formatTime(Date.now() - this.roundStart);
+        }, 250);
+      }
+
+      buildGrid() {
+        const cfg = this.cfg;
+        const cols = cfg.cols;
+
+        const chosen = shuffle([...EMOJI_POOL]).slice(0, cfg.pairs);
+        const deck = shuffle(chosen.concat(chosen));
+
+        gridEl.innerHTML = '';
+        gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+        deck.forEach(emoji => {
+          const card = document.createElement('button');
+          card.className = 'mcard';
+          card.dataset.emoji = emoji;
+          card.innerHTML = `
+            <div class="mcard-inner">
+              <div class="mcard-face mcard-back">?</div>
+              <div class="mcard-face mcard-front">${emoji}</div>
+            </div>`;
+          card.addEventListener('click', () => this.onCardTap(card));
+          gridEl.appendChild(card);
+        });
+      }
+
+      onCardTap(card) {
+        if (this.lock || card === this.firstCard || card.classList.contains('flipped')) return;
+        this.sound('pop');
+        card.classList.add('flipped');
+        if (!this.firstCard) { this.firstCard = card; return; }
+        this.lock = true;
+        const a = this.firstCard, b = card;
+        this.firstCard = null;
+        if (a.dataset.emoji === b.dataset.emoji) {
+          setTimeout(() => this.onMatch(a, b), 450);
+        } else {
+          setTimeout(() => {
+            a.classList.remove('flipped');
+            b.classList.remove('flipped');
+            this.sound('wrong');
+            this.lock = false;
+          }, 900);
+        }
+      }
+
+      onMatch(a, b) {
+        const pts = pairPoints(Date.now() - this.pairStart);
+        this.pairStart = Date.now();
+        this.score += pts;
+        scoreEl.textContent = String(this.score);
+
+        this.correct(a.querySelector('.mcard-front'));
+        this.correct(b.querySelector('.mcard-front'));
+
+        a.classList.add('matched');
+        b.classList.add('matched');
+
+        popPoints(b, pts);
+
+        this.lock = false;
+        this.matchedCount++;
+
+        if (this.matchedCount === this.cfg.pairs) {
+          setTimeout(() => this.endRound(), 600);
+        }
+      }
+
+      endRound() {
+        this.stopClock();
+        const avg = this.score / this.cfg.pairs;
+        const stars = avg >= 75 ? 3 : avg >= 45 ? 2 : 1;
+        const key = bestKey(this.difficulty);
+        const best = getBest(this.difficulty);
+        if (this.score > best) localStorage.setItem(key, String(this.score));
+        renderModeCards();
+        this.showWin(stars, action => {
+          if (action === 'again') this.startRound(this.difficulty);
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      game = new MemoryGame({ name: 'Memory' });
+      game.init();
+    });
+  </script>
+</body>
+</html>
