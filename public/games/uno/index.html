@@ -210,14 +210,8 @@
     }
     .player-hand .uno-card:first-child { margin-left: 0; }
 
-    .uno-card.playable {
-      transform: translateY(-12px);
-      box-shadow: 0 8px 24px rgba(0,0,0,.45);
-      border-color: rgba(255,255,255,.7);
-    }
-    .uno-card.playable:hover { transform: translateY(-18px); }
-    .uno-card.playable:active { transform: translateY(-8px) scale(.95); }
-    .uno-card.not-playable { opacity: .5; cursor: not-allowed; }
+    .uno-card:hover { transform: translateY(-10px); }
+    .uno-card:active { transform: translateY(-4px) scale(.95); }
 
     /* Card colors */
     .uno-card.red    { background: linear-gradient(145deg, #e63946, #c1121f); }
@@ -713,7 +707,6 @@
     playerHand.forEach((card, i) => {
       const el = buildCardEl(card, { interactive: true });
       const canPlay = isPlayable(card, top);
-      el.classList.add(canPlay ? 'playable' : 'not-playable');
       el.style.zIndex = i;
 
       if (canPlay && playerTurn) {

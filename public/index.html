@@ -105,5 +105,13 @@
     </div>
   </div>
   <a href="/admin.html" class="admin-link" title="Admin">⚙️</a>
+  <script>
+    fetch('/api/videos')
+      .then(r => r.json())
+      .then(videos => {
+        if (!videos.length) document.querySelector('.home-card--videos').style.display = 'none';
+      })
+      .catch(() => {});
+  </script>
 </body>
 </html>
