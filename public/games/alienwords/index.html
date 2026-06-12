@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Alien Words</title>
+  <link rel="stylesheet" href="/css/kids.css">
+  <style>
+    body { background: linear-gradient(160deg, #0f2027 0%, #203a43 50%, #2c5364 100%); }
+
+    #screen-mode {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 28px; padding: 20px;
+    }
+    .mode-title {
+      font-size: clamp(32px, 7vw, 60px); font-weight: 900;
+      color: white; text-shadow: 0 3px 12px rgba(0,0,0,.2);
+    }
+    .mode-cards {
+      display: grid; grid-template-columns: 1fr; gap: 20px;
+      width: 100%; max-width: 420px;
+    }
+    .mode-card {
+      background: white; border-radius: 24px; padding: 24px 16px;
+      text-align: center; cursor: pointer; box-shadow: 0 8px 32px rgba(0,0,0,.12);
+      transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+      display: flex; flex-direction: column; gap: 8px; align-items: center;
+      border: none; font-family: inherit;
+    }
+    .mode-card:active { transform: scale(.93); }
+    .mode-card-icon  { font-size: clamp(44px, 10vw, 64px); line-height: 1; }
+    .mode-card-label { font-size: clamp(22px, 4.5vw, 30px); font-weight: 900; color: #1A202C; }
+    .mode-card-sub   { font-size: 14px; font-weight: 700; color: #718096; }
+
+    #screen-game { display: none; flex: 1; flex-direction: column; align-items: center; width: 100%; }
+
+    .alien-header {
+      width: 100%; padding: 72px 24px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .alien-score {
+      font-size: 20px; font-weight: 900; color: white;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .alien-content {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: clamp(16px, 3vh, 32px);
+      padding: 0 20px 24px; width: 100%; max-width: 560px;
+    }
+
+    .word-card {
+      background: white; border-radius: 24px;
+      padding: clamp(20px, 5vw, 36px) clamp(28px, 8vw, 56px);
+      font-size: clamp(40px, 12vw, 72px); font-weight: 900; color: #1A202C;
+      box-shadow: 0 12px 40px rgba(0,0,0,.25);
+      text-transform: none;
+    }
+
+    .alien-prompt {
+      font-size: clamp(16px, 4vw, 22px); font-weight: 800;
+      color: white; text-align: center;
+    }
+
+    .reveal-label {
+      font-size: clamp(16px, 4vw, 22px); font-weight: 900;
+      color: white; min-height: 28px; text-align: center;
+    }
+
+    .answer-row {
+      display: flex; gap: 16px; width: 100%; justify-content: center;
+    }
+    .answer-btn {
+      flex: 1; max-width: 200px; height: 110px; border-radius: 20px;
+      border: none; cursor: pointer; font-family: inherit;
+      font-size: 22px; font-weight: 900; color: white;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.25);
+      transition: transform .1s, opacity .2s;
+    }
+    .answer-btn:active { transform: scale(.93); }
+    .answer-btn[disabled] { pointer-events: none; }
+    .answer-btn .answer-icon { font-size: 40px; line-height: 1; }
+    .answer-real  { background: #6BCB77; }
+    .answer-alien { background: #A78BFA; }
+  </style>
+</head>
+<body>
+  <button class="nav-back" id="back-btn">←</button>
+
+  <div id="screen-mode">
+    <div class="mode-title">Alien Words 👽</div>
+    <div class="mode-cards">
+      <button class="mode-card" data-level="1" style="border-top:6px solid #6BCB77">
+        <span class="mode-card-icon">🐣</span>
+        <span class="mode-card-label">Short Words</span>
+        <span class="mode-card-sub">Ages 5+ • cat, vap</span>
+      </button>
+      <button class="mode-card" data-level="2" style="border-top:6px solid #FB923C">
+        <span class="mode-card-icon">🚀</span>
+        <span class="mode-card-label">Sound Teams</span>
+        <span class="mode-card-sub">Ages 6+ • ship, shap</span>
+      </button>
+      <button class="mode-card" data-level="3" style="border-top:6px solid #A78BFA">
+        <span class="mode-card-icon">👽</span>
+        <span class="mode-card-label">Tricky Words</span>
+        <span class="mode-card-sub">Ages 7+ • rain, straim</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="screen-game">
+    <div class="alien-header">
+      <div class="progress-dots" id="progress"></div>
+      <div class="alien-score">⭐ <span id="score-val">0</span></div>
+    </div>
+
+    <div class="alien-content">
+      <div class="word-card" id="word-card"></div>
+      <div class="alien-prompt">Is it a real word, or an alien word?</div>
+      <div class="reveal-label" id="reveal-label"></div>
+      <div class="answer-row">
+        <button class="answer-btn answer-real" id="btn-real">
+          <span class="answer-icon">🦘</span><span>Real</span>
+        </button>
+        <button class="answer-btn answer-alien" id="btn-alien">
+          <span class="answer-icon">👽</span><span>Alien</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/games/_lib/confetti.js"></script>
+  <script src="/games/_lib/KidsGame.js"></script>
+  <script src="/games/_lib/words-au.js"></script>
+  <script>
+    const ROUND = 10;
+
+    let game, level, cards, cardIndex, score, mistakes;
+
+    const screenMode  = document.getElementById('screen-mode');
+    const screenGame  = document.getElementById('screen-game');
+    const progressEl  = document.getElementById('progress');
+    const scoreEl     = document.getElementById('score-val');
+    const wordCard    = document.getElementById('word-card');
+    const revealLabel = document.getElementById('reveal-label');
+    const btnReal     = document.getElementById('btn-real');
+    const btnAlien    = document.getElementById('btn-alien');
+    const backBtn     = document.getElementById('back-btn');
+
+    class AlienGame extends KidsGame {
+      init() {
+        document.querySelectorAll('.mode-card').forEach(btn =>
+          btn.addEventListener('click', () => { this._ctx(); startGame(parseInt(btn.dataset.level)); }));
+        btnReal.addEventListener('click', () => answer(true));
+        btnAlien.addEventListener('click', () => answer(false));
+        backBtn.addEventListener('click', () => {
+          if (screenGame.style.display !== 'none') showModeSelect();
+          else this.home();
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      game = new AlienGame({ name: 'Alien Words' });
+      game.init();
+    });
+
+    function startGame(lvl) {
+      level = lvl;
+      screenMode.style.display = 'none';
+      screenGame.style.display = 'flex';
+
+      const data = AU.ALIEN[level];
+      const reals  = AU.shuffle([...data.real]).slice(0, 5).map(w => ({ w, isReal: true }));
+      const aliens = AU.shuffle([...data.alien]).slice(0, 5).map(w => ({ w, isReal: false }));
+      cards = AU.shuffle([...reals, ...aliens]);
+
+      cardIndex = 0;
+      score = 0;
+      mistakes = 0;
+      scoreEl.textContent = '0';
+      renderProgress();
+      renderCard();
+    }
+
+    function showModeSelect() {
+      screenGame.style.display = 'none';
+      screenMode.style.display = 'flex';
+    }
+
+    function renderProgress() {
+      progressEl.innerHTML = '';
+      for (let i = 0; i < ROUND; i++) {
+        const d = document.createElement('div');
+        d.className = 'dot' + (i < cardIndex ? ' done' : i === cardIndex ? ' current' : '');
+        progressEl.appendChild(d);
+      }
+    }
+
+    function renderCard() {
+      const card = cards[cardIndex];
+      wordCard.textContent = card.w;
+      revealLabel.textContent = '';
+      btnReal.disabled = false;
+      btnAlien.disabled = false;
+    }
+
+    function answer(saidReal) {
+      game._ctx();
+      const card = cards[cardIndex];
+      btnReal.disabled = true;
+      btnAlien.disabled = true;
+
+      const isCorrect = saidReal === card.isReal;
+      if (isCorrect) {
+        game.correct(wordCard);
+        score += 10;
+        scoreEl.textContent = score;
+      } else {
+        game.wrong(wordCard);
+        mistakes++;
+        revealLabel.textContent = card.isReal ? 'that one is real! 🦘' : 'that one is alien! 👽';
+      }
+      AU.speak(card.w);
+
+      setTimeout(() => {
+        cardIndex++;
+        renderProgress();
+        if (cardIndex >= ROUND) {
+          const stars = mistakes <= 1 ? 3 : mistakes <= 3 ? 2 : 1;
+          game.showWin(stars, action => { if (action === 'again') startGame(level); });
+        } else {
+          renderCard();
+        }
+      }, 1300);
+    }
+  </script>
+</body>
+</html>

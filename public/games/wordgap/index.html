@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Word Gap</title>
+  <link rel="stylesheet" href="/css/kids.css">
+  <style>
+    body { background: linear-gradient(160deg, #fddb92 0%, #d1fdff 100%); }
+
+    #screen-mode {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 28px; padding: 20px;
+    }
+    .mode-title {
+      font-size: clamp(32px, 7vw, 56px); font-weight: 900;
+      color: #1A202C; text-shadow: 0 2px 8px rgba(255,255,255,.4);
+    }
+    .mode-cards {
+      display: grid; grid-template-columns: 1fr; gap: 20px;
+      width: 100%; max-width: 420px;
+    }
+    .mode-card {
+      background: white; border-radius: 24px; padding: 24px 16px;
+      text-align: center; cursor: pointer; box-shadow: 0 8px 32px rgba(0,0,0,.12);
+      transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+      display: flex; flex-direction: column; gap: 8px; align-items: center;
+      border: none; font-family: inherit;
+    }
+    .mode-card:active { transform: scale(.93); }
+    .mode-card-icon  { font-size: clamp(40px, 9vw, 60px); line-height: 1; }
+    .mode-card-label { font-size: clamp(22px, 4.5vw, 30px); font-weight: 900; color: #1A202C; }
+    .mode-card-sub   { font-size: 14px; font-weight: 700; color: #718096; }
+
+    #screen-game { display: none; flex: 1; flex-direction: column; align-items: center; width: 100%; }
+
+    .gap-header {
+      width: 100%; padding: 72px 24px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .gap-score {
+      font-size: 20px; font-weight: 900; color: #1A202C;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .gap-content {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: clamp(16px, 3vh, 28px);
+      padding: 0 20px 24px; width: 100%; max-width: 600px;
+    }
+
+    .gap-emoji {
+      font-size: clamp(72px, 15vw, 120px); line-height: 1;
+      filter: drop-shadow(0 6px 16px rgba(0,0,0,.15));
+      cursor: pointer; background: none; border: none;
+    }
+
+    .gap-word { display: flex; gap: 10px; justify-content: center; flex-wrap: nowrap; }
+    .gap-slot {
+      height: clamp(52px, 9vw, 80px); min-width: clamp(52px, 9vw, 80px);
+      width: auto; padding: 0 10px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(26px, 5vw, 44px); font-weight: 900; color: #1A202C;
+      background: rgba(255,255,255,.85);
+      transition: transform .2s, background .2s;
+    }
+    .gap-slot.gap {
+      background: rgba(255,255,255,.25);
+      border: 3px dashed rgba(0,0,0,.3); color: transparent;
+    }
+    .gap-slot.filled {
+      background: #6BCB77; color: white; border: 3px solid transparent;
+      transform: scale(1.08);
+    }
+
+    .choices { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .tile {
+      height: clamp(52px, 9vw, 80px); min-width: clamp(52px, 9vw, 80px);
+      width: auto; padding: 0 10px; border-radius: 14px;
+      font-size: clamp(26px, 5vw, 44px); font-weight: 900;
+      border: none; cursor: pointer; font-family: inherit;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,.2);
+      transition: transform .1s, opacity .2s;
+    }
+    .tile:active { transform: scale(.9); }
+    .tile[disabled] { opacity: .4; pointer-events: none; }
+
+    .hint-btn {
+      background: rgba(255,255,255,.4); border: none; border-radius: 14px;
+      padding: 10px 20px; font-family: inherit; font-size: 16px; font-weight: 800;
+      color: #1A202C; cursor: pointer;
+    }
+    .hint-btn:active { opacity: .7; }
+
+    .word-done-flash {
+      position: fixed; inset: 0; z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(107,203,119,.85);
+      font-size: 80px; animation: flash-in .25s ease; pointer-events: none;
+    }
+    @keyframes flash-in {
+      from { opacity: 0; transform: scale(.5); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <button class="nav-back" id="back-btn">←</button>
+
+  <div id="screen-mode">
+    <div class="mode-title">Word Gap 🔤</div>
+    <div class="mode-cards">
+      <button class="mode-card" data-level="1" style="border-top:6px solid #6BCB77">
+        <span class="mode-card-icon">🐣</span>
+        <span class="mode-card-label">First Sound</span>
+        <span class="mode-card-sub">Ages 4+ • _at</span>
+      </button>
+      <button class="mode-card" data-level="2" style="border-top:6px solid #FB923C">
+        <span class="mode-card-icon">🦁</span>
+        <span class="mode-card-label">Any Sound</span>
+        <span class="mode-card-sub">Ages 5+ • fi_h</span>
+      </button>
+      <button class="mode-card" data-level="3" style="border-top:6px solid #A78BFA">
+        <span class="mode-card-icon">🦉</span>
+        <span class="mode-card-label">Tricky Sound</span>
+        <span class="mode-card-sub">Ages 6+ • r_n</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="screen-game">
+    <div class="gap-header">
+      <div class="progress-dots" id="progress"></div>
+      <div class="gap-score">⭐ <span id="score-val">0</span></div>
+    </div>
+
+    <div class="gap-content">
+      <button class="gap-emoji" id="emoji"></button>
+      <div class="gap-word" id="word-row"></div>
+      <div class="choices" id="choices"></div>
+      <button class="hint-btn" id="hint-btn">💡 Hint</button>
+    </div>
+  </div>
+
+  <script src="/games/_lib/confetti.js"></script>
+  <script src="/games/_lib/KidsGame.js"></script>
+  <script src="/games/_lib/words-au.js"></script>
+  <script>
+    const ROUND = 5;
+    const LEVEL_STAGE = { 1: 2, 2: 3, 3: 4 };
+    const LEVEL_COUNT = { 1: 3, 2: 4, 3: 4 };
+
+    let game, level, stageId, words, wIndex, score, totalMistakes;
+    let word, gapIndex, wrongOnWord, answered;
+
+    const screenMode = document.getElementById('screen-mode');
+    const screenGame = document.getElementById('screen-game');
+    const progressEl = document.getElementById('progress');
+    const scoreEl    = document.getElementById('score-val');
+    const emojiEl    = document.getElementById('emoji');
+    const wordRow    = document.getElementById('word-row');
+    const choicesEl  = document.getElementById('choices');
+    const hintBtn    = document.getElementById('hint-btn');
+    const backBtn    = document.getElementById('back-btn');
+
+    function pickGapIndex(word, level) {
+      if (level === 1) return 0;
+      const idxs = word.g.map((g, i) => i)
+        .filter(i => !(i === word.g.length - 1 && word.g[i] === 'e'));
+      return idxs[Math.floor(Math.random() * idxs.length)];
+    }
+
+    function makeChoices(word, gi, stageId, count) {
+      const ans = word.g[gi];
+      const pool = AU.GPC[stageId].vowels.includes(ans)
+        ? AU.GPC[stageId].vowels : AU.GPC[stageId].cons;
+      const out = [ans];
+      for (const c of AU.shuffle([...pool])) {
+        if (out.length === count) break;
+        if (c === ans || out.includes(c)) continue;
+        const cand = word.g.map((g, i) => i === gi ? c : g).join('');
+        if (AU.VALID.has(cand) || AU.BLOCKED.has(cand)) continue;
+        out.push(c);
+      }
+      return AU.shuffle(out);
+    }
+
+    class GapGame extends KidsGame {
+      init() {
+        document.querySelectorAll('.mode-card').forEach(btn =>
+          btn.addEventListener('click', () => { this._ctx(); startGame(parseInt(btn.dataset.level)); }));
+        emojiEl.addEventListener('click', () => { game._ctx(); AU.speak(word.w); });
+        hintBtn.addEventListener('click', () => { game._ctx(); showHint(); });
+        backBtn.addEventListener('click', () => {
+          if (screenGame.style.display !== 'none') showLevelSelect();
+          else this.home();
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      game = new GapGame({ name: 'Word Gap' });
+      game.init();
+    });
+
+    function startGame(lvl) {
+      level = lvl;
+      stageId = LEVEL_STAGE[lvl];
+      screenMode.style.display = 'none';
+      screenGame.style.display = 'flex';
+      const stageWords = AU.STAGES.find(s => s.id === stageId).words;
+      words = AU.shuffle([...stageWords]).slice(0, ROUND);
+      wIndex = 0;
+      score = 0;
+      totalMistakes = 0;
+      scoreEl.textContent = '0';
+      renderProgress();
+      renderWord();
+    }
+
+    function showLevelSelect() {
+      screenGame.style.display = 'none';
+      screenMode.style.display = 'flex';
+    }
+
+    function renderProgress() {
+      progressEl.innerHTML = '';
+      for (let i = 0; i < ROUND; i++) {
+        const d = document.createElement('div');
+        d.className = 'dot' + (i < wIndex ? ' done' : i === wIndex ? ' current' : '');
+        progressEl.appendChild(d);
+      }
+    }
+
+    function renderWord() {
+      word = words[wIndex];
+      gapIndex = pickGapIndex(word, level);
+      wrongOnWord = 0;
+      answered = false;
+
+      emojiEl.textContent = word.e;
+
+      wordRow.innerHTML = '';
+      word.g.forEach((g, i) => {
+        const slot = document.createElement('div');
+        slot.className = 'gap-slot' + (i === gapIndex ? ' gap' : '');
+        slot.textContent = i === gapIndex ? '' : g;
+        wordRow.appendChild(slot);
+      });
+
+      const choices = makeChoices(word, gapIndex, stageId, LEVEL_COUNT[level]);
+      choicesEl.innerHTML = '';
+      choices.forEach((c, i) => {
+        const t = document.createElement('button');
+        t.className = `tile tc${i % 6}`;
+        t.textContent = c;
+        t.dataset.g = c;
+        t.addEventListener('click', () => tapChoice(t));
+        choicesEl.appendChild(t);
+      });
+
+      setTimeout(() => AU.speak(word.w), 400);
+    }
+
+    function tapChoice(tile) {
+      game._ctx();
+      if (answered || tile.disabled) return;
+      if (tile.dataset.g === word.g[gapIndex]) {
+        answered = true;
+        const slot = wordRow.children[gapIndex];
+        slot.textContent = word.g[gapIndex];
+        slot.classList.remove('gap');
+        slot.classList.add('filled');
+        choicesEl.querySelectorAll('.tile').forEach(t => t.disabled = true);
+        choicesEl.querySelectorAll('.kg-hint').forEach(t => t.classList.remove('kg-hint'));
+        game.sound('pop');
+        AU.speak(word.w);
+        score += Math.max(10, 30 - totalMistakes * 5);
+        scoreEl.textContent = score;
+
+        const flash = document.createElement('div');
+        flash.className = 'word-done-flash';
+        flash.textContent = '🎉';
+        document.body.appendChild(flash);
+        setTimeout(() => {
+          flash.remove();
+          wIndex++;
+          renderProgress();
+          if (wIndex >= ROUND) {
+            const stars = totalMistakes <= 2 ? 3 : totalMistakes <= 5 ? 2 : 1;
+            game.showWin(stars, action => { if (action === 'again') startGame(level); });
+          } else {
+            renderWord();
+          }
+        }, 900);
+      } else {
+        game.wrong(tile);
+        totalMistakes++;
+        wrongOnWord++;
+        if (wrongOnWord >= 2) showHint();
+      }
+    }
+
+    function showHint() {
+      choicesEl.querySelectorAll('.kg-hint').forEach(t => t.classList.remove('kg-hint'));
+      choicesEl.querySelectorAll('.tile').forEach(t => {
+        if (!t.disabled && t.dataset.g === word.g[gapIndex]) t.classList.add('kg-hint');
+      });
+    }
+  </script>
+</body>
+</html>
