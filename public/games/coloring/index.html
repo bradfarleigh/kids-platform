@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Colouring</title>
+  <link rel="stylesheet" href="/css/kids.css">
+  <style>
+    body { background: linear-gradient(160deg, #ffecd2 0%, #fcb69f 100%); overflow: hidden; }
+
+    .coloring-wrap {
+      height: 100dvh;
+      display: flex; flex-direction: column;
+      align-items: center;
+      padding-top: 72px;
+    }
+
+    /* Scene selector */
+    .scene-tabs {
+      display: flex; gap: 10px;
+      padding: 0 16px 10px;
+      flex-shrink: 0;
+    }
+    .scene-tab {
+      background: rgba(255,255,255,.5); border: 3px solid transparent;
+      border-radius: 14px; padding: 6px 14px;
+      font-size: 18px; font-weight: 800; cursor: pointer;
+      font-family: inherit; transition: all .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .scene-tab.active {
+      background: white; border-color: #FF6B6B;
+      box-shadow: 0 4px 12px rgba(255,107,107,.3);
+    }
+    .scene-tab:active { transform: scale(.93); }
+
+    /* SVG container */
+    .svg-wrap {
+      flex: 1; width: 100%; max-width: 700px;
+      padding: 0 12px; display: flex; align-items: center; justify-content: center;
+      min-height: 0;
+    }
+    .svg-wrap svg {
+      width: 100%; height: 100%;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.15);
+      background: white;
+      touch-action: manipulation;
+    }
+
+    /* Colorable regions */
+    .r {
+      fill: white;
+      stroke: #2D2D2D;
+      stroke-width: 2.5;
+      cursor: pointer;
+      transition: opacity .1s;
+    }
+    .r:active { opacity: .8; }
+
+    /* Palette */
+    .palette {
+      display: flex; gap: 10px; align-items: center;
+      padding: 10px 16px 20px; flex-shrink: 0; flex-wrap: wrap; justify-content: center;
+    }
+    .swatch {
+      width: clamp(36px, 7vw, 48px);
+      height: clamp(36px, 7vw, 48px);
+      border-radius: 50%; border: 3px solid transparent;
+      cursor: pointer; transition: transform .12s, border-color .12s;
+      box-shadow: 0 3px 8px rgba(0,0,0,.2);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .swatch.selected {
+      border-color: white;
+      transform: scale(1.25);
+      box-shadow: 0 4px 14px rgba(0,0,0,.35);
+    }
+    .swatch:active { transform: scale(1.15); }
+
+    .clear-btn {
+      background: rgba(255,255,255,.5); border: none; border-radius: 12px;
+      padding: 8px 14px; font-family: inherit; font-size: 14px; font-weight: 800;
+      cursor: pointer; color: #4A5568; flex-shrink: 0;
+    }
+    .clear-btn:active { opacity: .7; }
+  </style>
+</head>
+<body>
+  <button class="nav-back" onclick="location.href='/games/'">←</button>
+
+  <div class="coloring-wrap">
+    <div class="scene-tabs" id="tabs"></div>
+
+    <div class="svg-wrap">
+      <svg id="canvas" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet"
+           xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div class="palette">
+      <div id="swatches"></div>
+      <button class="clear-btn" onclick="clearScene()">🗑 Clear</button>
+    </div>
+  </div>
+
+  <script src="/games/_lib/confetti.js"></script>
+  <script src="/games/_lib/KidsGame.js"></script>
+  <script>
+    // ── Colour palette ─────────────────────────────────────────────
+    const COLORS = [
+      '#FF0000','#FF8800','#FFD700','#66BB6A',
+      '#26C6DA','#2979FF','#AA00FF','#FF4081',
+      '#8D4E2A','#212121','#9E9E9E','#FFFFFF',
+    ];
+
+    // ── SVG Scene definitions ──────────────────────────────────────
+    const SCENES = [
+      {
+        name: '🌞 Sunny', svg: `
+          <rect class="r" x="0" y="0" width="400" height="215"/>
+          <rect class="r" x="0" y="215" width="400" height="85"/>
+          <!-- sun rays behind sun -->
+          <g stroke="#2D2D2D" stroke-width="2.5" stroke-linecap="round" fill="none">
+            <line x1="330" y1="18" x2="330" y2="7"/>
+            <line x1="362" y1="36" x2="370" y2="26"/>
+            <line x1="376" y1="68" x2="387" y2="68"/>
+            <line x1="363" y1="100" x2="371" y2="110"/>
+            <line x1="330" y1="118" x2="330" y2="129"/>
+            <line x1="297" y1="100" x2="289" y2="110"/>
+            <line x1="284" y1="68" x2="273" y2="68"/>
+            <line x1="297" y1="36" x2="289" y2="26"/>
+          </g>
+          <circle class="r" cx="330" cy="68" r="40"/>
+          <ellipse class="r" cx="95" cy="118" rx="62" ry="28"/>
+          <ellipse class="r" cx="228" cy="97" rx="70" ry="28"/>
+          <!-- tree trunk -->
+          <rect x="60" y="195" width="16" height="38" fill="#2D2D2D"/>
+          <circle class="r" cx="68" cy="182" r="36"/>
+          <!-- flower stems -->
+          <line x1="168" y1="215" x2="168" y2="258" stroke="#2D2D2D" stroke-width="3" stroke-linecap="round"/>
+          <line x1="215" y1="215" x2="215" y2="252" stroke="#2D2D2D" stroke-width="3" stroke-linecap="round"/>
+          <circle class="r" cx="168" cy="240" r="18"/>
+          <circle class="r" cx="215" cy="237" r="15"/>
+          <!-- flower centres -->
+          <circle cx="168" cy="240" r="6" fill="#2D2D2D" pointer-events="none"/>
+          <circle cx="215" cy="237" r="5" fill="#2D2D2D" pointer-events="none"/>
+        `
+      },
+      {
+        name: '🏠 House', svg: `
+          <rect class="r" x="0" y="0" width="400" height="200"/>
+          <rect class="r" x="0" y="200" width="400" height="100"/>
+          <!-- walkway -->
+          <rect class="r" x="182" y="200" width="36" height="22"/>
+          <!-- house walls -->
+          <rect class="r" x="78" y="138" width="244" height="75"/>
+          <!-- chimney (behind roof) -->
+          <rect class="r" x="258" y="85" width="26" height="58"/>
+          <!-- roof -->
+          <polygon class="r" points="62,138 200,68 338,138"/>
+          <!-- door -->
+          <rect class="r" x="170" y="166" width="60" height="47" rx="4"/>
+          <!-- windows -->
+          <rect class="r" x="96" y="150" width="54" height="38" rx="5"/>
+          <rect class="r" x="250" y="150" width="54" height="38" rx="5"/>
+          <!-- window dividers (decorative) -->
+          <g stroke="#2D2D2D" stroke-width="1.5" fill="none">
+            <line x1="123" y1="150" x2="123" y2="188"/>
+            <line x1="96"  y1="169" x2="150" y2="169"/>
+            <line x1="277" y1="150" x2="277" y2="188"/>
+            <line x1="250" y1="169" x2="304" y2="169"/>
+          </g>
+          <!-- door knob -->
+          <circle cx="224" cy="192" r="3.5" fill="#2D2D2D" pointer-events="none"/>
+          <!-- sun -->
+          <circle class="r" cx="48" cy="48" r="30"/>
+          <g stroke="#2D2D2D" stroke-width="2" stroke-linecap="round" fill="none">
+            <line x1="48" y1="10" x2="48" y2="3"/>
+            <line x1="72" y1="24" x2="78" y2="18"/>
+            <line x1="86" y1="48" x2="93" y2="48"/>
+            <line x1="72" y1="72" x2="78" y2="78"/>
+            <line x1="48" y1="86" x2="48" y2="93"/>
+            <line x1="24" y1="72" x2="18" y2="78"/>
+            <line x1="10" y1="48" x2="3"  y2="48"/>
+            <line x1="24" y1="24" x2="18" y2="18"/>
+          </g>
+        `
+      },
+      {
+        name: '🚀 Space', svg: `
+          <rect class="r" x="0" y="0" width="400" height="300"/>
+          <!-- stars (decorative) -->
+          <g fill="#2D2D2D">
+            <circle cx="30"  cy="25"  r="2.5"/>
+            <circle cx="80"  cy="50"  r="2"/>
+            <circle cx="150" cy="18"  r="3"/>
+            <circle cx="230" cy="42"  r="2.5"/>
+            <circle cx="300" cy="15"  r="2"/>
+            <circle cx="370" cy="38"  r="3"/>
+            <circle cx="360" cy="90"  r="2"/>
+            <circle cx="45"  cy="90"  r="2.5"/>
+            <circle cx="100" cy="200" r="2"/>
+            <circle cx="345" cy="200" r="2.5"/>
+            <circle cx="30"  cy="170" r="2"/>
+            <circle cx="380" cy="160" r="2"/>
+          </g>
+          <!-- moon -->
+          <circle class="r" cx="52" cy="68" r="46"/>
+          <!-- moon craters -->
+          <circle cx="38"  cy="58"  r="8"  fill="none" stroke="#2D2D2D" stroke-width="1.5" pointer-events="none"/>
+          <circle cx="65"  cy="80"  r="6"  fill="none" stroke="#2D2D2D" stroke-width="1.5" pointer-events="none"/>
+          <circle cx="56"  cy="48"  r="5"  fill="none" stroke="#2D2D2D" stroke-width="1.5" pointer-events="none"/>
+          <!-- planet -->
+          <circle class="r" cx="340" cy="240" r="52"/>
+          <ellipse cx="340" cy="240" rx="68" ry="18" fill="none" stroke="#2D2D2D" stroke-width="2.5" pointer-events="none"/>
+          <!-- rocket body -->
+          <rect class="r" x="172" y="98" width="56" height="120" rx="10"/>
+          <!-- rocket nose -->
+          <polygon class="r" points="172,98 228,98 200,46"/>
+          <!-- rocket window -->
+          <circle class="r" cx="200" cy="148" r="22"/>
+          <!-- rocket fins -->
+          <polygon class="r" points="172,182 140,220 172,220"/>
+          <polygon class="r" points="228,182 260,220 228,220"/>
+          <!-- rocket flame -->
+          <ellipse class="r" cx="200" cy="228" rx="18" ry="22"/>
+          <!-- window shine (decorative) -->
+          <circle cx="190" cy="138" r="6" fill="none" stroke="#2D2D2D" stroke-width="1.5" pointer-events="none"/>
+        `
+      },
+      {
+        name: '🐟 Ocean', svg: `
+          <rect class="r" x="0" y="0" width="400" height="80"/>
+          <rect class="r" x="0" y="80" width="400" height="190"/>
+          <!-- sand -->
+          <rect class="r" x="0" y="270" width="400" height="30"/>
+          <!-- wave lines (decorative) -->
+          <g stroke="#2D2D2D" stroke-width="2" fill="none">
+            <path d="M 0,90 q 50,-16 100,0 q 50,16 100,0 q 50,-16 100,0 q 50,16 100,0"/>
+          </g>
+          <!-- fish tail -->
+          <polygon class="r" points="110,175 148,148 148,202"/>
+          <!-- fish body -->
+          <ellipse class="r" cx="206" cy="175" rx="82" ry="50"/>
+          <!-- fish top fin -->
+          <polygon class="r" points="188,128 208,128 202,162"/>
+          <!-- fish eye -->
+          <circle class="r" cx="256" cy="168" r="12"/>
+          <!-- eye pupil -->
+          <circle cx="259" cy="165" r="5" fill="#2D2D2D" pointer-events="none"/>
+          <!-- mouth -->
+          <path d="M 275,178 q 8,6 0,12" stroke="#2D2D2D" stroke-width="2" fill="none" pointer-events="none"/>
+          <!-- scales (decorative) -->
+          <g stroke="#2D2D2D" stroke-width="1.2" fill="none">
+            <path d="M 200,160 q 12,-10 24,0"/>
+            <path d="M 200,178 q 12,-10 24,0"/>
+            <path d="M 175,168 q 12,-10 24,0"/>
+            <path d="M 175,185 q 12,-10 24,0"/>
+          </g>
+          <!-- seaweed left -->
+          <path class="r" d="M 55,270 q -18,-30 0,-55 q 18,-30 0,-55 q -15,-25 0,-40" stroke="#2D2D2D" stroke-width="6" fill="none" stroke-linecap="round"/>
+          <!-- seaweed right -->
+          <path class="r" d="M 330,270 q 18,-28 0,-50 q -18,-28 0,-50 q 15,-22 0,-38" stroke="#2D2D2D" stroke-width="6" fill="none" stroke-linecap="round"/>
+          <!-- coral 1 -->
+          <rect class="r" x="95" y="252" width="20" height="30" rx="10"/>
+          <circle class="r" cx="105" cy="250" r="12"/>
+          <!-- coral 2 -->
+          <rect class="r" x="280" y="256" width="18" height="26" rx="9"/>
+          <circle class="r" cx="289" cy="253" r="11"/>
+          <!-- bubbles -->
+          <circle class="r" cx="270" cy="130" r="9"/>
+          <circle class="r" cx="286" cy="110" r="7"/>
+          <circle class="r" cx="262" cy="98"  r="6"/>
+        `
+      },
+    ];
+
+    // ── State ──────────────────────────────────────────────────────
+    let selectedColor = COLORS[0];
+    let currentScene = 0;
+    let game;
+
+    // ── Init ──────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      game = new KidsGame({ name: 'Colouring', backUrl: '/games/' });
+
+      buildTabs();
+      buildPalette();
+      loadScene(0);
+
+      document.getElementById('canvas').addEventListener('click', e => {
+        const r = e.target.closest('.r');
+        if (!r) return;
+        game._ctx(); // unlock audio
+        r.style.fill = selectedColor;
+        game.sound('pop');
+      });
+    });
+
+    function buildTabs() {
+      const tabs = document.getElementById('tabs');
+      SCENES.forEach((s, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'scene-tab' + (i === 0 ? ' active' : '');
+        btn.textContent = s.name;
+        btn.onclick = () => {
+          document.querySelectorAll('.scene-tab').forEach((b, j) =>
+            b.classList.toggle('active', j === i));
+          loadScene(i);
+        };
+        tabs.appendChild(btn);
+      });
+    }
+
+    function buildPalette() {
+      const wrap = document.getElementById('swatches');
+      wrap.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;justify-content:center';
+      COLORS.forEach(c => {
+        const sw = document.createElement('button');
+        sw.className = 'swatch' + (c === selectedColor ? ' selected' : '');
+        sw.style.background = c;
+        if (c === '#FFFFFF') sw.style.border = '3px solid #ccc';
+        sw.onclick = () => {
+          document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+          sw.classList.add('selected');
+          selectedColor = c;
+          game.sound('click');
+        };
+        wrap.appendChild(sw);
+      });
+    }
+
+    function loadScene(i) {
+      currentScene = i;
+      const svg = document.getElementById('canvas');
+      svg.innerHTML = SCENES[i].svg;
+    }
+
+    function clearScene() {
+      document.querySelectorAll('#canvas .r').forEach(el => {
+        el.style.fill = '';
+      });
+      game.sound('click');
+    }
+  </script>
+</body>
+</html>

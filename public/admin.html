@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin — Kids Platform</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --coral: #FF6B6B; --green: #6BCB77; --dark: #1A202C; --mid: #4A5568;
+      --border: #E2E8F0; --bg: #F7FAFC;
+    }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--dark); min-height: 100vh; }
+
+    .login-wrap {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .login-card {
+      background: white; border-radius: 16px; padding: 40px 32px; max-width: 360px; width: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,.1); text-align: center;
+    }
+    .login-card h1 { font-size: 28px; margin-bottom: 8px; }
+    .login-card p  { color: var(--mid); margin-bottom: 24px; }
+    .login-card input {
+      width: 100%; padding: 14px; border: 2px solid var(--border); border-radius: 10px;
+      font-size: 18px; margin-bottom: 16px; font-family: inherit; text-align: center;
+      letter-spacing: 4px;
+    }
+    .login-card input:focus { outline: none; border-color: var(--coral); }
+    .login-card .err { color: #E53E3E; font-size: 14px; margin-top: -8px; margin-bottom: 12px; }
+
+    .admin-wrap { max-width: 900px; margin: 0 auto; padding: 24px 20px 40px; }
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+    header h1 { font-size: 28px; }
+    header a  { color: var(--mid); font-size: 14px; text-decoration: none; }
+
+    .section-title { font-size: 18px; font-weight: 700; margin-bottom: 14px; color: var(--mid); text-transform: uppercase; letter-spacing: .5px; font-size: 13px; }
+
+    /* Search */
+    .search-row { display: flex; gap: 10px; margin-bottom: 8px; }
+    .search-row input {
+      flex: 1; padding: 12px 16px; border: 2px solid var(--border); border-radius: 10px;
+      font-size: 16px; font-family: inherit;
+    }
+    .search-row input:focus { outline: none; border-color: var(--coral); }
+    .btn {
+      padding: 12px 24px; border-radius: 10px; border: none; font-size: 16px;
+      font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;
+    }
+    .btn-primary   { background: var(--coral); color: white; }
+    .btn-primary:hover { background: #e05555; }
+    .btn-success   { background: var(--green); color: white; }
+    .btn-success:hover { background: #59b565; }
+    .btn-danger    { background: #FED7D7; color: #C53030; border: none; padding: 6px 14px; font-size: 13px; border-radius: 8px; cursor: pointer; }
+
+    /* Results grid */
+    .results-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px; margin-bottom: 32px;
+    }
+    .result-card {
+      background: white; border-radius: 12px; overflow: hidden;
+      border: 2px solid var(--border); cursor: pointer; transition: border-color .15s;
+    }
+    .result-card:hover { border-color: var(--green); }
+    .result-card.added { border-color: var(--green); background: #F0FFF4; }
+    .result-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
+    .result-info { padding: 8px 10px; }
+    .result-title { font-size: 13px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .result-channel { font-size: 12px; color: var(--mid); margin-top: 3px; }
+    .result-add { display: block; width: 100%; padding: 8px; background: var(--green); color: white; border: none; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .result-add:disabled { background: #C6F6D5; color: #276749; cursor: default; }
+
+    /* Video list */
+    .video-list { display: flex; flex-direction: column; gap: 10px; }
+    .video-row {
+      background: white; border-radius: 12px; border: 1px solid var(--border);
+      display: flex; align-items: center; gap: 14px; padding: 10px 14px;
+    }
+    .video-row img { width: 80px; height: 45px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+    .video-row-info { flex: 1; min-width: 0; }
+    .video-row-title { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .video-row-meta  { font-size: 12px; color: var(--mid); margin-top: 2px; }
+    .age-select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; cursor: pointer; }
+    .empty { color: var(--mid); font-size: 15px; padding: 20px 0; }
+
+    .no-api { background: #FFFBEB; border: 1px solid #FEF08A; border-radius: 10px; padding: 14px 18px; font-size: 14px; color: #854D0E; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-wrap" id="login-wrap">
+  <div class="login-card">
+    <h1>⚙️ Admin</h1>
+    <p>Enter admin password</p>
+    <input type="password" id="pw-input" placeholder="••••••••" autofocus>
+    <div class="err hidden" id="pw-err">Wrong password</div>
+    <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Enter</button>
+  </div>
+</div>
+
+<!-- Admin UI -->
+<div class="admin-wrap hidden" id="admin-wrap">
+  <header>
+    <h1>⚙️ Kids Admin</h1>
+    <a href="/">← Back to kids page</a>
+  </header>
+
+  <!-- Search section -->
+  <div class="section-title">Add Videos</div>
+  <div id="no-api-msg" class="no-api hidden">
+    No YouTube API key configured. Set <code>YOUTUBE_API_KEY</code> in your <code>.env</code> file.
+  </div>
+  <div class="search-row">
+    <input type="text" id="search-input" placeholder="Search YouTube…" onkeydown="if(event.key==='Enter') doSearch()">
+    <button class="btn btn-primary" onclick="doSearch()">Search</button>
+  </div>
+  <div class="results-grid" id="results"></div>
+
+  <!-- Curated list -->
+  <div class="section-title">Curated Videos (<span id="video-count">0</span>)</div>
+  <div class="video-list" id="video-list"></div>
+</div>
+
+<script>
+  let token = sessionStorage.getItem('admin-token') || '';
+  let addedIds = new Set();
+
+  function doLogin() {
+    const pw = document.getElementById('pw-input').value;
+    token = pw;
+    sessionStorage.setItem('admin-token', pw);
+    checkAuth();
+  }
+
+  document.getElementById('pw-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+
+  async function checkAuth() {
+    if (!token) return;
+    const r = await fetch('/api/videos', { headers: { Authorization: `Bearer ${token}` } });
+    if (r.status === 401) {
+      document.getElementById('pw-err').classList.remove('hidden');
+      return;
+    }
+    document.getElementById('login-wrap').classList.add('hidden');
+    document.getElementById('admin-wrap').classList.remove('hidden');
+    loadVideoList();
+  }
+
+  async function doSearch() {
+    const q = document.getElementById('search-input').value.trim();
+    if (!q) return;
+    const resultsEl = document.getElementById('results');
+    resultsEl.innerHTML = '<div style="padding:20px;color:#718096">Searching…</div>';
+
+    const r = await fetch(`/api/youtube/search?q=${encodeURIComponent(q)}&maxResults=12`,
+      { headers: { Authorization: `Bearer ${token}` } });
+
+    if (r.status === 503) {
+      document.getElementById('no-api-msg').classList.remove('hidden');
+      resultsEl.innerHTML = '';
+      return;
+    }
+
+    const items = await r.json();
+    if (!items.length) { resultsEl.innerHTML = '<div style="padding:20px;color:#718096">No results</div>'; return; }
+
+    resultsEl.innerHTML = '';
+    items.forEach(v => {
+      const card = document.createElement('div');
+      card.className = 'result-card' + (addedIds.has(v.id) ? ' added' : '');
+      card.innerHTML = `
+        <img src="${escHtml(v.thumbnail)}" alt="">
+        <div class="result-info">
+          <div class="result-title">${escHtml(v.title)}</div>
+          <div class="result-channel">${escHtml(v.channelTitle)}</div>
+        </div>
+        <button class="result-add" ${addedIds.has(v.id) ? 'disabled' : ''} data-id="${v.id}">
+          ${addedIds.has(v.id) ? '✓ Added' : '+ Add'}
+        </button>`;
+      card.querySelector('.result-add').onclick = () => addVideo(v, card);
+      resultsEl.appendChild(card);
+    });
+  }
+
+  async function addVideo(v, card) {
+    const r = await fetch('/api/videos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(v),
+    });
+    if (r.ok || r.status === 409) {
+      addedIds.add(v.id);
+      card.classList.add('added');
+      card.querySelector('.result-add').disabled = true;
+      card.querySelector('.result-add').textContent = '✓ Added';
+      loadVideoList();
+    }
+  }
+
+  async function loadVideoList() {
+    const r = await fetch('/api/videos');
+    const videos = await r.json();
+    addedIds = new Set(videos.map(v => v.id));
+    document.getElementById('video-count').textContent = videos.length;
+    const listEl = document.getElementById('video-list');
+
+    if (!videos.length) {
+      listEl.innerHTML = '<div class="empty">No videos added yet. Search above to add some.</div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+    videos.forEach(v => {
+      const row = document.createElement('div');
+      row.className = 'video-row';
+      row.innerHTML = `
+        <img src="${escHtml(v.thumbnail)}" alt="">
+        <div class="video-row-info">
+          <div class="video-row-title">${escHtml(v.title)}</div>
+          <div class="video-row-meta">${escHtml(v.channelTitle || '')} • ${v.id}</div>
+        </div>
+        <select class="age-select" data-id="${v.id}">
+          <option value="all"  ${v.age==='all'   ?'selected':''}>All ages</option>
+          <option value="4"    ${v.age==='4'     ?'selected':''}>4+ yrs</option>
+          <option value="6"    ${v.age==='6'     ?'selected':''}>6+ yrs</option>
+        </select>
+        <button class="btn-danger" data-id="${v.id}">Remove</button>`;
+      row.querySelector('.age-select').onchange = async e => {
+        await fetch(`/api/videos/${v.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ age: e.target.value }),
+        });
+      };
+      row.querySelector('.btn-danger').onclick = async () => {
+        await fetch(`/api/videos/${v.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+        loadVideoList();
+      };
+      listEl.appendChild(row);
+    });
+  }
+
+  function escHtml(s = '') {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Auto-login if token in sessionStorage
+  if (token) checkAuth();
+</script>
+</body>
+</html>

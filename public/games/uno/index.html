@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>UNO</title>
+  <link rel="stylesheet" href="/css/kids.css">
+  <style>
+    body {
+      background: linear-gradient(160deg, #2d1b69 0%, #11998e 100%);
+      overflow: hidden;
+    }
+
+    /* ── Screens ─────────────────────────────────────────────────── */
+    .screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100dvh; width: 100%; }
+    .screen.active { display: flex; }
+
+    /* ── Start screen ────────────────────────────────────────────── */
+    #screen-start {
+      gap: 32px; padding: 24px;
+    }
+    .uno-logo {
+      font-size: clamp(72px, 18vw, 120px);
+      font-weight: 900;
+      letter-spacing: -4px;
+      line-height: 1;
+      background: linear-gradient(135deg, #FF6B6B, #FFE66D, #6BCB77, #4ECDC4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 4px 16px rgba(0,0,0,.3));
+      text-align: center;
+    }
+    .uno-tagline {
+      color: rgba(255,255,255,.85);
+      font-size: clamp(16px, 3.5vw, 22px);
+      font-weight: 700;
+      text-align: center;
+    }
+    .start-btn {
+      background: linear-gradient(135deg, #FF6B6B, #FF4444);
+      color: white; border: none; border-radius: 24px;
+      padding: 20px 60px; font-family: inherit;
+      font-size: clamp(22px, 4.5vw, 32px); font-weight: 900;
+      cursor: pointer; box-shadow: 0 8px 32px rgba(255,68,68,.4);
+      transition: transform .12s;
+    }
+    .start-btn:active { transform: scale(.93); }
+    .preview-cards {
+      display: flex; gap: -8px; justify-content: center; position: relative; height: 80px;
+    }
+    .preview-card {
+      width: 52px; height: 76px; border-radius: 8px;
+      position: absolute; box-shadow: 0 4px 12px rgba(0,0,0,.3);
+      border: 2px solid rgba(255,255,255,.3);
+    }
+
+    /* ── Game screen ─────────────────────────────────────────────── */
+    #screen-game {
+      justify-content: space-between;
+      padding: 0;
+      gap: 0;
+    }
+
+    /* ── CPU area ────────────────────────────────────────────────── */
+    .cpu-area {
+      flex-shrink: 0;
+      padding: 12px 16px 8px;
+      padding-top: max(12px, env(safe-area-inset-top, 12px));
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      width: 100%;
+    }
+    .cpu-label {
+      color: rgba(255,255,255,.8); font-size: 14px; font-weight: 800;
+      letter-spacing: .5px; text-transform: uppercase;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .cpu-count-badge {
+      background: rgba(255,255,255,.2); border-radius: 100px;
+      padding: 2px 10px; font-size: 13px; font-weight: 900; color: white;
+    }
+    .cpu-hand {
+      display: flex; align-items: center; justify-content: center;
+      position: relative; height: 72px; width: 100%;
+    }
+    .cpu-card {
+      width: 44px; height: 66px; border-radius: 7px;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      border: 2px solid rgba(255,255,255,.25);
+      position: absolute;
+      box-shadow: 0 3px 10px rgba(0,0,0,.4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; color: rgba(255,255,255,.15);
+    }
+    .cpu-card::after {
+      content: '';
+      position: absolute; inset: 4px;
+      border-radius: 4px;
+      background: linear-gradient(135deg, rgba(255,255,255,.05), transparent);
+    }
+
+    /* ── Center area ─────────────────────────────────────────────── */
+    .center-area {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      gap: clamp(16px, 4vw, 40px); padding: 8px 24px;
+      position: relative;
+    }
+
+    /* Draw pile */
+    .draw-pile {
+      width: 68px; height: 100px; border-radius: 10px;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      border: 3px solid rgba(255,255,255,.3);
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      box-shadow: 4px 4px 0 rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.4);
+      transition: transform .12s;
+      position: relative; flex-shrink: 0;
+    }
+    .draw-pile::before {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 9px;
+      background: repeating-linear-gradient(
+        45deg,
+        rgba(255,255,255,.03) 0px, rgba(255,255,255,.03) 4px,
+        transparent 4px, transparent 8px
+      );
+    }
+    .draw-pile:active { transform: scale(.93); }
+    .draw-pile-label {
+      color: rgba(255,255,255,.7); font-size: 10px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .5px; z-index: 1;
+    }
+    .draw-pile-count {
+      color: white; font-size: 22px; font-weight: 900; z-index: 1;
+    }
+    .draw-pile-icon { font-size: 24px; z-index: 1; }
+
+    /* Discard pile */
+    .discard-pile {
+      width: 80px; height: 116px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    /* Color indicator */
+    .color-indicator {
+      width: 44px; height: 44px; border-radius: 50%;
+      border: 3px solid rgba(255,255,255,.5);
+      box-shadow: 0 4px 12px rgba(0,0,0,.3);
+      flex-shrink: 0;
+      transition: background .3s;
+    }
+
+    /* Info panel */
+    .game-info {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .turn-indicator {
+      color: rgba(255,255,255,.9); font-size: 13px; font-weight: 900;
+      text-transform: uppercase; letter-spacing: .5px;
+      background: rgba(255,255,255,.15); border-radius: 100px;
+      padding: 4px 12px;
+    }
+    .turn-indicator.yours {
+      background: rgba(107, 203, 119, .35);
+      color: #6BCB77;
+    }
+
+    /* ── Player hand ─────────────────────────────────────────────── */
+    .player-area {
+      flex-shrink: 0;
+      padding: 6px 0 16px;
+      padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      width: 100%;
+    }
+    .player-label {
+      color: rgba(255,255,255,.8); font-size: 13px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    .player-hand-wrap {
+      width: 100%; overflow-x: auto; overflow-y: visible;
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
+      padding: 8px 0 4px;
+    }
+    .player-hand-wrap::-webkit-scrollbar { display: none; }
+    .player-hand {
+      display: flex; align-items: flex-end; justify-content: center;
+      padding: 0 24px; gap: 0;
+      min-width: min-content;
+    }
+
+    /* ── UNO Card visual ─────────────────────────────────────────── */
+    .uno-card {
+      width: 64px; height: 94px; border-radius: 12px;
+      position: relative; cursor: pointer;
+      transition: transform .15s cubic-bezier(.34,1.56,.64,1), opacity .2s, box-shadow .15s;
+      flex-shrink: 0;
+      margin-left: -14px;
+      box-shadow: 2px 4px 12px rgba(0,0,0,.35);
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid rgba(255,255,255,.2);
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .player-hand .uno-card:first-child { margin-left: 0; }
+
+    .uno-card.playable {
+      transform: translateY(-12px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.45);
+      border-color: rgba(255,255,255,.7);
+    }
+    .uno-card.playable:hover { transform: translateY(-18px); }
+    .uno-card.playable:active { transform: translateY(-8px) scale(.95); }
+    .uno-card.not-playable { opacity: .5; cursor: not-allowed; }
+
+    /* Card colors */
+    .uno-card.red    { background: linear-gradient(145deg, #e63946, #c1121f); }
+    .uno-card.blue   { background: linear-gradient(145deg, #4895ef, #2667cc); }
+    .uno-card.green  { background: linear-gradient(145deg, #2dc653, #1a8a38); }
+    .uno-card.yellow { background: linear-gradient(145deg, #ffd60a, #e8a800); }
+    .uno-card.wild   {
+      background: #1a1a2e;
+      overflow: hidden;
+    }
+    .uno-card.wild .wild-stripe {
+      position: absolute; inset: 0; border-radius: 10px; overflow: hidden;
+    }
+    .uno-card.wild .wild-stripe::before,
+    .uno-card.wild .wild-stripe::after {
+      content: '';
+      position: absolute;
+    }
+
+    /* Card inner oval */
+    .card-face {
+      position: absolute; inset: 0; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .card-oval {
+      width: 70%; height: 78%;
+      background: rgba(255,255,255,.18);
+      border-radius: 50%;
+      transform: rotate(-30deg);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card-value {
+      font-size: clamp(22px, 4.5vw, 28px); font-weight: 900;
+      color: white; text-shadow: 0 2px 6px rgba(0,0,0,.4);
+      transform: rotate(30deg);
+      line-height: 1;
+    }
+    .card-corner {
+      position: absolute; font-size: 11px; font-weight: 900; color: rgba(255,255,255,.85);
+      line-height: 1;
+    }
+    .card-corner.tl { top: 5px; left: 6px; }
+    .card-corner.br { bottom: 5px; right: 6px; transform: rotate(180deg); }
+
+    /* Wild card stripes */
+    .wild-quad {
+      position: absolute; inset: 0; border-radius: 10px; overflow: hidden;
+    }
+    .wild-quad .wq-r { position: absolute; top: 0; left: 0; right: 50%; bottom: 50%; background: #e63946; }
+    .wild-quad .wq-b { position: absolute; top: 0; left: 50%; right: 0; bottom: 50%; background: #4895ef; }
+    .wild-quad .wq-y { position: absolute; top: 50%; left: 0; right: 50%; bottom: 0; background: #ffd60a; }
+    .wild-quad .wq-g { position: absolute; top: 50%; left: 50%; right: 0; bottom: 0; background: #2dc653; }
+    .wild-quad .wq-center {
+      position: absolute; inset: 20%;
+      border-radius: 50%; background: rgba(0,0,0,.5);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 900; color: white;
+    }
+
+    /* Discard card (larger) */
+    .discard-pile .uno-card {
+      width: 80px; height: 116px; margin-left: 0;
+      cursor: default; pointer-events: none;
+      transform: none !important;
+      border-color: rgba(255,255,255,.4);
+    }
+    .discard-pile .uno-card .card-value { font-size: 28px; }
+    .discard-pile .uno-card .card-corner { font-size: 13px; }
+    .discard-pile .uno-card .card-oval { width: 72%; height: 80%; }
+
+    /* ── Toast ───────────────────────────────────────────────────── */
+    .toast {
+      position: fixed; top: 50%; left: 50%; z-index: 800;
+      transform: translate(-50%, -50%) scale(0);
+      background: rgba(0,0,0,.85); color: white;
+      padding: 14px 28px; border-radius: 100px;
+      font-size: clamp(16px, 3.5vw, 22px); font-weight: 900;
+      text-align: center; white-space: nowrap;
+      pointer-events: none; backdrop-filter: blur(12px);
+      transition: transform .2s cubic-bezier(.34,1.56,.64,1), opacity .2s;
+      border: 2px solid rgba(255,255,255,.15);
+    }
+    .toast.show { transform: translate(-50%, -50%) scale(1); }
+    .toast.hide { transform: translate(-50%, -50%) scale(.8); opacity: 0; }
+
+    /* UNO banner */
+    .uno-banner {
+      position: fixed; top: 50%; left: 50%; z-index: 810;
+      transform: translate(-50%, -50%) scale(0);
+      background: linear-gradient(135deg, #FF6B6B, #FFE66D);
+      color: white; font-size: clamp(32px, 8vw, 56px); font-weight: 900;
+      padding: 20px 48px; border-radius: 24px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.4);
+      text-shadow: 0 3px 8px rgba(0,0,0,.3);
+      pointer-events: none;
+      transition: transform .3s cubic-bezier(.34,1.56,.64,1), opacity .3s;
+    }
+    .uno-banner.show { transform: translate(-50%, -50%) scale(1); }
+    .uno-banner.hide { transform: translate(-50%, -50%) scale(.6); opacity: 0; }
+
+    /* ── Color picker modal ──────────────────────────────────────── */
+    .color-picker-overlay {
+      position: fixed; inset: 0; z-index: 900;
+      background: rgba(0,0,0,.6); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s;
+    }
+    .color-picker-overlay.open {
+      opacity: 1; pointer-events: all;
+    }
+    .color-picker-card {
+      background: rgba(255,255,255,.1); border-radius: 28px;
+      padding: 28px; text-align: center;
+      border: 2px solid rgba(255,255,255,.2);
+      backdrop-filter: blur(20px);
+      animation: bounce-in .35s cubic-bezier(.34,1.56,.64,1);
+    }
+    .color-picker-title {
+      color: white; font-size: 20px; font-weight: 900; margin-bottom: 20px;
+    }
+    .color-picker-buttons {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    }
+    .color-btn {
+      width: 90px; height: 90px; border-radius: 20px; border: none;
+      cursor: pointer; font-size: 28px; font-weight: 900;
+      transition: transform .12s; box-shadow: 0 6px 20px rgba(0,0,0,.3);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .color-btn:active { transform: scale(.9); }
+    .color-btn.red    { background: linear-gradient(135deg, #e63946, #c1121f); color: white; }
+    .color-btn.blue   { background: linear-gradient(135deg, #4895ef, #2667cc); color: white; }
+    .color-btn.green  { background: linear-gradient(135deg, #2dc653, #1a8a38); color: white; }
+    .color-btn.yellow { background: linear-gradient(135deg, #ffd60a, #e8a800); color: #333; }
+
+    /* CPU thinking spinner */
+    .thinking-dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(255,255,255,.8);
+      animation: thinking-pulse 1.2s ease-in-out infinite;
+    }
+    .thinking-dot:nth-child(2) { animation-delay: .2s; }
+    .thinking-dot:nth-child(3) { animation-delay: .4s; }
+
+    @keyframes thinking-pulse {
+      0%, 80%, 100% { transform: scale(.6); opacity: .4; }
+      40% { transform: scale(1.1); opacity: 1; }
+    }
+
+    /* Card deal animation */
+    @keyframes deal-in {
+      from { transform: translateY(-80px) scale(.6); opacity: 0; }
+      to   { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .deal-anim { animation: deal-in .3s cubic-bezier(.34,1.56,.64,1); }
+
+    /* Card play animation */
+    @keyframes card-play {
+      0%   { transform: translateY(0) scale(1); opacity: 1; }
+      50%  { transform: translateY(-30px) scale(1.2); opacity: .8; }
+      100% { transform: translateY(0) scale(1); opacity: 0; }
+    }
+    .play-anim { animation: card-play .25s ease forwards; }
+
+    /* ── Color-coded colors for indicator ────────────────────────── */
+    .ci-red    { background: #e63946; }
+    .ci-blue   { background: #4895ef; }
+    .ci-green  { background: #2dc653; }
+    .ci-yellow { background: #ffd60a; }
+  </style>
+</head>
+<body>
+  <button class="nav-back" id="back-btn">←</button>
+
+  <!-- ── Start screen ──────────────────────────────────────────── -->
+  <div id="screen-start" class="screen active">
+    <div class="uno-logo">UNO!</div>
+    <div class="uno-tagline">Match colors &amp; numbers to win! 🎴</div>
+    <div class="preview-cards" id="preview-cards"></div>
+    <button class="start-btn" id="start-btn">▶ Play!</button>
+  </div>
+
+  <!-- ── Game screen ───────────────────────────────────────────── -->
+  <div id="screen-game" class="screen">
+
+    <!-- CPU area -->
+    <div class="cpu-area">
+      <div class="cpu-label">
+        🤖 CPU
+        <span class="cpu-count-badge" id="cpu-count">7</span>
+        <span id="thinking-dots" style="display:none; gap:3px; align-items:center;">
+          <span class="thinking-dot"></span>
+          <span class="thinking-dot"></span>
+          <span class="thinking-dot"></span>
+        </span>
+      </div>
+      <div class="cpu-hand" id="cpu-hand"></div>
+    </div>
+
+    <!-- Center area -->
+    <div class="center-area">
+      <div class="draw-pile" id="draw-pile">
+        <div class="draw-pile-icon">🃏</div>
+        <div class="draw-pile-count" id="draw-count">93</div>
+        <div class="draw-pile-label">Draw</div>
+      </div>
+
+      <div class="discard-pile" id="discard-pile"></div>
+
+      <div class="game-info">
+        <div class="color-indicator" id="color-indicator"></div>
+        <div class="turn-indicator" id="turn-indicator">Your Turn</div>
+      </div>
+    </div>
+
+    <!-- Player area -->
+    <div class="player-area">
+      <div class="player-label">Your Hand</div>
+      <div class="player-hand-wrap">
+        <div class="player-hand" id="player-hand"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Color picker modal ────────────────────────────────────── -->
+  <div class="color-picker-overlay" id="color-picker">
+    <div class="color-picker-card">
+      <div class="color-picker-title">Choose a color 🎨</div>
+      <div class="color-picker-buttons">
+        <button class="color-btn red"    data-color="red">🔴</button>
+        <button class="color-btn blue"   data-color="blue">🔵</button>
+        <button class="color-btn green"  data-color="green">🟢</button>
+        <button class="color-btn yellow" data-color="yellow">🟡</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast + UNO banner ────────────────────────────────────── -->
+  <div class="toast" id="toast"></div>
+  <div class="uno-banner" id="uno-banner">UNO! 🎉</div>
+
+  <script src="/games/_lib/confetti.js"></script>
+  <script src="/games/_lib/KidsGame.js"></script>
+  <script>
+  // ═══════════════════════════════════════════════════════════════
+  // UNO GAME
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── Card definitions ─────────────────────────────────────────
+  const COLORS = ['red', 'blue', 'green', 'yellow'];
+  const WILD_TYPES = ['wild', 'wild4'];
+
+  const COLOR_LABELS = {
+    red: '🔴 Red', blue: '🔵 Blue', green: '🟢 Green', yellow: '🟡 Yellow'
+  };
+
+  const SYMBOL_MAP = {
+    skip:    '⊘',
+    reverse: '↺',
+    draw2:   '+2',
+    wild:    '★',
+    wild4:   '+4',
+  };
+
+  function buildDeck() {
+    const deck = [];
+    let id = 0;
+    for (const color of COLORS) {
+      // One 0
+      deck.push({ id: id++, color, type: 'number', value: '0' });
+      // Two each of 1-9
+      for (let n = 1; n <= 9; n++) {
+        deck.push({ id: id++, color, type: 'number', value: String(n) });
+        deck.push({ id: id++, color, type: 'number', value: String(n) });
+      }
+      // Two each of Skip, Reverse, Draw2
+      for (let i = 0; i < 2; i++) {
+        deck.push({ id: id++, color, type: 'skip',    value: SYMBOL_MAP.skip });
+        deck.push({ id: id++, color, type: 'reverse', value: SYMBOL_MAP.reverse });
+        deck.push({ id: id++, color, type: 'draw2',   value: SYMBOL_MAP.draw2 });
+      }
+    }
+    // 4 Wild, 4 Wild Draw 4
+    for (let i = 0; i < 4; i++) {
+      deck.push({ id: id++, color: 'wild', type: 'wild',  value: SYMBOL_MAP.wild });
+      deck.push({ id: id++, color: 'wild', type: 'wild4', value: SYMBOL_MAP.wild4 });
+    }
+    return deck;
+  }
+
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // ── DOM refs ─────────────────────────────────────────────────
+  const screenStart   = document.getElementById('screen-start');
+  const screenGame    = document.getElementById('screen-game');
+  const startBtn      = document.getElementById('start-btn');
+  const backBtn       = document.getElementById('back-btn');
+  const cpuHandEl     = document.getElementById('cpu-hand');
+  const cpuCountEl    = document.getElementById('cpu-count');
+  const thinkingDots  = document.getElementById('thinking-dots');
+  const drawPileEl    = document.getElementById('draw-pile');
+  const drawCountEl   = document.getElementById('draw-count');
+  const discardPileEl = document.getElementById('discard-pile');
+  const colorIndicatorEl = document.getElementById('color-indicator');
+  const turnIndicatorEl  = document.getElementById('turn-indicator');
+  const playerHandEl  = document.getElementById('player-hand');
+  const colorPicker   = document.getElementById('color-picker');
+  const toastEl       = document.getElementById('toast');
+  const unoBannerEl   = document.getElementById('uno-banner');
+
+  // ── Game state ────────────────────────────────────────────────
+  let drawPile = [];
+  let discardPile = [];
+  let playerHand = [];
+  let cpuHand = [];
+  let currentColor = '';   // active color (important for wilds)
+  let playerTurn = true;
+  let gameRunning = false;
+  let cpuTimeout = null;
+  let pendingWildCard = null;  // card waiting for color choice
+  let unoShown = false;        // track if UNO banner is showing
+  let toastTimer = null;
+  let unoBannerTimer = null;
+
+  // ── KidsGame class ────────────────────────────────────────────
+  class UnoGame extends KidsGame {
+    init() {
+      startBtn.addEventListener('click', () => this.startGame());
+      backBtn.addEventListener('click', () => {
+        if (screenGame.classList.contains('active')) {
+          this.endGame();
+          showScreen('start');
+        } else {
+          this.home();
+        }
+      });
+
+      // Color picker buttons
+      colorPicker.querySelectorAll('.color-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const color = btn.dataset.color;
+          colorPicker.classList.remove('open');
+          if (pendingWildCard) {
+            finishWildPlay(pendingWildCard, color);
+            pendingWildCard = null;
+          }
+        });
+      });
+
+      // Draw pile
+      drawPileEl.addEventListener('click', () => {
+        if (!gameRunning || !playerTurn) return;
+        game._ctx();
+        playerDraw();
+      });
+
+      // Build preview cards on start screen
+      buildPreview();
+    }
+
+    startGame() {
+      this.sound('click');
+      showScreen('game');
+      this._ctx();
+      initGame();
+    }
+
+    endGame() {
+      gameRunning = false;
+      if (cpuTimeout) clearTimeout(cpuTimeout);
+      cpuTimeout = null;
+    }
+  }
+
+  // ── Start screen preview ──────────────────────────────────────
+  function buildPreview() {
+    const preview = document.getElementById('preview-cards');
+    const previewCards = [
+      { color:'red', value:'7' }, { color:'blue', value:'Skip' },
+      { color:'wild', value:'★' }, { color:'green', value:'3' },
+      { color:'yellow', value:'+2' },
+    ];
+    previewCards.forEach((c, i) => {
+      const el = document.createElement('div');
+      el.className = 'preview-card';
+      const bg = c.color === 'wild'
+        ? 'linear-gradient(135deg, #e63946 0%, #e63946 25%, #4895ef 25%, #4895ef 50%, #ffd60a 50%, #ffd60a 75%, #2dc653 75%)'
+        : ({ red:'#e63946', blue:'#4895ef', green:'#2dc653', yellow:'#ffd60a' }[c.color]);
+      el.style.cssText = `background: ${bg}; left: ${50 + (i - 2) * 22}px; transform: rotate(${(i-2)*8}deg);`;
+      preview.appendChild(el);
+    });
+  }
+
+  // ── Game init ─────────────────────────────────────────────────
+  function initGame() {
+    gameRunning = true;
+    playerTurn = true;
+    unoShown = false;
+
+    // Build and shuffle deck
+    drawPile = shuffle(buildDeck());
+    discardPile = [];
+    playerHand = [];
+    cpuHand = [];
+
+    // Deal 7 cards each
+    for (let i = 0; i < 7; i++) {
+      playerHand.push(drawPile.pop());
+      cpuHand.push(drawPile.pop());
+    }
+
+    // Start discard: draw until we get a non-wild number card
+    let starter;
+    do {
+      starter = drawPile.pop();
+      if (starter.type === 'wild' || starter.type === 'wild4') {
+        drawPile.unshift(starter); // put back at bottom
+      } else {
+        break;
+      }
+    } while (true);
+
+    discardPile.push(starter);
+    currentColor = starter.color;
+
+    renderAll();
+  }
+
+  // ── Rendering ─────────────────────────────────────────────────
+  function renderAll() {
+    renderCpuHand();
+    renderDiscardPile();
+    renderDrawCount();
+    renderColorIndicator();
+    renderPlayerHand();
+    renderTurnIndicator();
+  }
+
+  function renderCpuHand() {
+    cpuHandEl.innerHTML = '';
+    cpuCountEl.textContent = cpuHand.length;
+
+    const count = cpuHand.length;
+    const maxWidth = Math.min(window.innerWidth - 80, 500);
+    const spread = Math.min(36, (maxWidth - 44) / Math.max(count - 1, 1));
+    const totalWidth = 44 + spread * (count - 1);
+    const startX = -totalWidth / 2;
+
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('div');
+      el.className = 'cpu-card';
+      el.textContent = '🃏';
+      const angle = count > 1 ? ((i / (count - 1)) - 0.5) * 20 : 0;
+      const lift = count > 1 ? -Math.abs((i / (count - 1)) - 0.5) * 8 : 0;
+      el.style.cssText = `
+        left: calc(50% + ${startX + i * spread}px - 22px);
+        transform: rotate(${angle}deg) translateY(${lift}px);
+      `;
+      cpuHandEl.appendChild(el);
+    }
+  }
+
+  function renderDiscardPile() {
+    const top = discardPile[discardPile.length - 1];
+    discardPileEl.innerHTML = '';
+    if (top) {
+      discardPileEl.appendChild(buildCardEl(top, { large: true }));
+    }
+  }
+
+  function renderDrawCount() {
+    drawCountEl.textContent = drawPile.length;
+  }
+
+  function renderColorIndicator() {
+    colorIndicatorEl.className = 'color-indicator ci-' + currentColor;
+  }
+
+  function renderPlayerHand() {
+    playerHandEl.innerHTML = '';
+    const top = discardPile[discardPile.length - 1];
+
+    playerHand.forEach((card, i) => {
+      const el = buildCardEl(card, { interactive: true });
+      const canPlay = isPlayable(card, top);
+      el.classList.add(canPlay ? 'playable' : 'not-playable');
+      el.style.zIndex = i;
+
+      if (canPlay && playerTurn) {
+        el.addEventListener('click', () => {
+          if (!playerTurn || !gameRunning) return;
+          game._ctx();
+          playCard('player', i);
+        });
+      }
+
+      playerHandEl.appendChild(el);
+    });
+  }
+
+  function renderTurnIndicator() {
+    if (playerTurn) {
+      turnIndicatorEl.textContent = 'Your Turn ▶';
+      turnIndicatorEl.classList.add('yours');
+    } else {
+      turnIndicatorEl.innerHTML = 'CPU thinking...';
+      turnIndicatorEl.classList.remove('yours');
+    }
+  }
+
+  // ── Card element builder ──────────────────────────────────────
+  function buildCardEl(card, opts = {}) {
+    const el = document.createElement('div');
+    el.className = 'uno-card ' + card.color;
+    if (opts.large) el.classList.add('large');
+
+    const displayVal = card.value;
+
+    if (card.color === 'wild') {
+      // Wild quad
+      el.innerHTML = `
+        <div class="wild-quad">
+          <div class="wq-r"></div>
+          <div class="wq-b"></div>
+          <div class="wq-y"></div>
+          <div class="wq-g"></div>
+          <div class="wq-center">${displayVal}</div>
+        </div>
+      `;
+    } else {
+      el.innerHTML = `
+        <div class="card-face">
+          <div class="card-oval">
+            <div class="card-value">${displayVal}</div>
+          </div>
+        </div>
+        <div class="card-corner tl">${displayVal}</div>
+        <div class="card-corner br">${displayVal}</div>
+      `;
+    }
+
+    return el;
+  }
+
+  // ── Game logic ────────────────────────────────────────────────
+  function isPlayable(card, topCard) {
+    if (!topCard) return true;
+    if (card.type === 'wild' || card.type === 'wild4') return true;
+    // Match current color (may differ from topCard.color after wild)
+    if (card.color === currentColor) return true;
+    // Match type/value
+    if (card.type !== 'number' && card.type === topCard.type) return true;
+    if (card.type === 'number' && topCard.type === 'number' && card.value === topCard.value) return true;
+    return false;
+  }
+
+  function recheckDraw() {
+    // Reshuffle discard (except top card) into draw pile when empty
+    if (drawPile.length === 0) {
+      if (discardPile.length <= 1) return; // can't reshuffle
+      const top = discardPile.pop();
+      drawPile = shuffle(discardPile);
+      // Reset wild cards' color in the recycled deck
+      drawPile.forEach(c => {
+        if (c.type === 'wild' || c.type === 'wild4') c.color = 'wild';
+      });
+      discardPile = [top];
+      showToast('♻️ Deck reshuffled!');
+    }
+  }
+
+  function drawCards(hand, count) {
+    for (let i = 0; i < count; i++) {
+      recheckDraw();
+      if (drawPile.length === 0) break;
+      hand.push(drawPile.pop());
+    }
+  }
+
+  // ── Play a card ───────────────────────────────────────────────
+  function playCard(who, handIdx) {
+    const hand = who === 'player' ? playerHand : cpuHand;
+    const card = hand[handIdx];
+    if (!card) return;
+
+    // Remove from hand
+    hand.splice(handIdx, 1);
+
+    // Add to discard
+    discardPile.push(card);
+
+    game.sound('pop');
+
+    // Handle wild: need color choice
+    if (card.type === 'wild' || card.type === 'wild4') {
+      if (who === 'player') {
+        // Show color picker
+        pendingWildCard = { card, who };
+        colorPicker.classList.add('open');
+        renderAll();
+        return;
+      } else {
+        // CPU picks best color
+        const chosen = cpuPickColor();
+        currentColor = chosen;
+        card.color = chosen; // for visual display in discard
+        finishCardEffect(card, who);
+      }
+    } else {
+      currentColor = card.color;
+      finishCardEffect(card, who);
+    }
+  }
+
+  function finishWildPlay(pending, color) {
+    currentColor = color;
+    pending.card.color = color; // update display
+    game.sound('correct');
+    finishCardEffect(pending.card, pending.who);
+  }
+
+  function finishCardEffect(card, who) {
+    const opponent = who === 'player' ? 'cpu' : 'player';
+    const opponentHand = opponent === 'player' ? playerHand : cpuHand;
+
+    if (card.type === 'skip') {
+      showToast(who === 'player' ? 'CPU skipped! ⊘' : 'CPU plays Skip! ⊘');
+      // Skip opponent — same player goes again
+      renderAll();
+      checkUno();
+      if (!checkWin(who)) {
+        // Same player's turn again (skip opponent)
+        // If player played skip, player goes again:
+        playerTurn = (who === 'player');
+        renderAll();
+        if (!playerTurn) scheduleCpuTurn();
+      }
+      return;
+    }
+
+    if (card.type === 'reverse') {
+      // With 2 players, reverse acts like skip
+      showToast(who === 'player' ? 'Reversed! (CPU skipped) ↺' : 'CPU reverses! (You skip) ↺');
+      renderAll();
+      checkUno();
+      if (!checkWin(who)) {
+        playerTurn = (who === 'player');
+        renderAll();
+        if (!playerTurn) scheduleCpuTurn();
+      }
+      return;
+    }
+
+    if (card.type === 'draw2') {
+      drawCards(opponentHand, 2);
+      const msg = who === 'player' ? 'CPU draws 2! +2' : 'You drew 2 cards! +2';
+      showToast(msg);
+      renderAll();
+      checkUno();
+      if (!checkWin(who)) {
+        // Opponent loses turn, same player goes again
+        playerTurn = (who === 'player');
+        renderAll();
+        if (!playerTurn) scheduleCpuTurn();
+      }
+      return;
+    }
+
+    if (card.type === 'wild4') {
+      drawCards(opponentHand, 4);
+      const msg = who === 'player' ? 'CPU draws 4! +4' : 'You drew 4 cards! +4';
+      showToast(msg);
+      renderAll();
+      checkUno();
+      if (!checkWin(who)) {
+        playerTurn = (who === 'player');
+        renderAll();
+        if (!playerTurn) scheduleCpuTurn();
+      }
+      return;
+    }
+
+    // Normal card / wild (color already chosen)
+    renderAll();
+    checkUno();
+    if (!checkWin(who)) {
+      // Switch turns
+      playerTurn = (who !== 'player');
+      renderAll();
+      if (!playerTurn) scheduleCpuTurn();
+    }
+  }
+
+  // ── Player draw ───────────────────────────────────────────────
+  function playerDraw() {
+    if (!playerTurn || !gameRunning) return;
+    recheckDraw();
+    if (drawPile.length === 0) return;
+
+    const card = drawPile.pop();
+    playerHand.push(card);
+    game.sound('click');
+    showToast('You drew a card');
+
+    const top = discardPile[discardPile.length - 1];
+
+    renderAll();
+    renderDrawCount();
+
+    // If the drawn card is playable, player may play it
+    if (isPlayable(card, top)) {
+      showToast('You can play the drawn card! 🎴');
+      // Highlight it — player decides; no forced play
+      // Keep player turn active so they can tap it
+    } else {
+      // No playable card, pass turn
+      setTimeout(() => {
+        playerTurn = false;
+        renderAll();
+        scheduleCpuTurn();
+      }, 500);
+    }
+  }
+
+  // ── CPU AI ────────────────────────────────────────────────────
+  function scheduleCpuTurn() {
+    if (!gameRunning) return;
+    thinkingDots.style.display = 'flex';
+    cpuTimeout = setTimeout(() => {
+      thinkingDots.style.display = 'none';
+      if (gameRunning) cpuTakeTurn();
+    }, 1200);
+  }
+
+  function cpuTakeTurn() {
+    const top = discardPile[discardPile.length - 1];
+
+    // Sort playable cards: prefer action cards
+    const playable = cpuHand
+      .map((c, i) => ({ card: c, i }))
+      .filter(({ card }) => isPlayable(card, top));
+
+    if (playable.length > 0) {
+      // Priority: wild4 > draw2 > skip > reverse > wild > number
+      const priority = { wild4: 6, draw2: 5, skip: 4, reverse: 3, wild: 2, number: 1 };
+      playable.sort((a, b) => (priority[b.card.type] || 1) - (priority[a.card.type] || 1));
+      const chosen = playable[0];
+      playCard('cpu', chosen.i);
+    } else {
+      // Draw once
+      recheckDraw();
+      if (drawPile.length === 0) {
+        // Can't draw, pass
+        showToast('CPU passes');
+        playerTurn = true;
+        renderAll();
+        return;
+      }
+      const drawn = drawPile.pop();
+      cpuHand.push(drawn);
+      showToast('CPU draws a card');
+      renderCpuHand();
+      renderDrawCount();
+
+      // Play if playable
+      if (isPlayable(drawn, top)) {
+        setTimeout(() => {
+          const idx = cpuHand.indexOf(drawn);
+          if (idx >= 0) playCard('cpu', idx);
+        }, 600);
+      } else {
+        // Pass
+        setTimeout(() => {
+          playerTurn = true;
+          renderAll();
+        }, 600);
+      }
+    }
+  }
+
+  function cpuPickColor() {
+    // Count colors in CPU hand
+    const counts = { red: 0, blue: 0, green: 0, yellow: 0 };
+    cpuHand.forEach(c => {
+      if (counts[c.color] !== undefined) counts[c.color]++;
+    });
+    const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    // Show what CPU chose
+    setTimeout(() => showToast(`CPU chose ${COLOR_LABELS[best[0]]}!`), 100);
+    return best[0] || 'red';
+  }
+
+  // ── UNO check ─────────────────────────────────────────────────
+  function checkUno() {
+    const playerOne = playerHand.length === 1;
+    const cpuOne    = cpuHand.length === 1;
+
+    if ((playerOne || cpuOne) && !unoShown) {
+      unoShown = true;
+      showUnoBanner();
+      game.sound('cheer');
+    } else if (!playerOne && !cpuOne) {
+      unoShown = false;
+    }
+  }
+
+  function showUnoBanner() {
+    unoBannerEl.classList.remove('hide');
+    unoBannerEl.classList.add('show');
+    if (unoBannerTimer) clearTimeout(unoBannerTimer);
+    unoBannerTimer = setTimeout(() => {
+      unoBannerEl.classList.add('hide');
+      unoBannerEl.classList.remove('show');
+    }, 2000);
+  }
+
+  // ── Win check ─────────────────────────────────────────────────
+  function checkWin(who) {
+    const hand = who === 'player' ? playerHand : cpuHand;
+    if (hand.length === 0) {
+      gameRunning = false;
+      setTimeout(() => {
+        if (who === 'player') {
+          game.celebrate();
+          game.showWin(3, action => {
+            if (action === 'again') { showScreen('game'); initGame(); }
+          });
+        } else {
+          game.showLose('CPU wins this time! 🤖', action => {
+            if (action === 'again') { showScreen('game'); initGame(); }
+          });
+        }
+      }, 400);
+      return true;
+    }
+    return false;
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.remove('hide');
+    toastEl.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toastEl.classList.add('hide');
+      toastEl.classList.remove('show');
+    }, 1800);
+  }
+
+  // ── Screen switching ──────────────────────────────────────────
+  function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + name).classList.add('active');
+  }
+
+  // ── Bootstrap ────────────────────────────────────────────────
+  let game;
+  document.addEventListener('DOMContentLoaded', () => {
+    game = new UnoGame({ name: 'UNO' });
+    game.init();
+  });
+  </script>
+</body>
+</html>

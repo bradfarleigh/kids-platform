@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Videos</title>
+  <link rel="stylesheet" href="/css/kids.css">
+  <style>
+    body { overflow-y: auto; }
+    .empty-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      padding: 40px 20px; text-align: center;
+    }
+    .empty-state-icon { font-size: 80px; }
+    .empty-state-title { font-size: 28px; font-weight: 900; color: white; }
+    .empty-state-sub { font-size: 18px; color: rgba(255,255,255,.75); font-weight: 700; max-width: 340px; }
+
+    /* ── Video grid (shown when videos exist) ─────────────── */
+    .videos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px; padding: 0 20px 32px;
+      max-width: 1100px; margin: 0 auto; width: 100%;
+    }
+
+    .video-card {
+      background: white; border-radius: 20px;
+      overflow: hidden; cursor: pointer; box-shadow: 0 8px 32px rgba(0,0,0,.12);
+      transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+      border: none; text-align: left; font-family: inherit;
+    }
+    .video-card:active { transform: scale(.96); }
+    .video-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
+    .video-card-info { padding: 12px 14px 14px; }
+    .video-card-title {
+      font-size: 15px; font-weight: 800; color: #1A202C;
+      overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .video-card-channel { font-size: 13px; color: #718096; font-weight: 700; margin-top: 4px; }
+
+    /* ── Video player modal ───────────────────────────────── */
+    .player-modal {
+      position: fixed; inset: 0; z-index: 900;
+      background: rgba(0,0,0,.85);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .player-inner {
+      width: 100%; max-width: 900px;
+      aspect-ratio: 16/9; position: relative;
+      border-radius: 16px; overflow: hidden;
+      background: black;
+    }
+    .player-inner iframe { width: 100%; height: 100%; border: none; }
+    .player-close {
+      position: absolute; top: -48px; right: 0;
+      background: rgba(255,255,255,.2); border: none;
+      border-radius: 50%; width: 40px; height: 40px;
+      font-size: 20px; color: white; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <button class="nav-back" onclick="location.href='/'">🏠</button>
+  <h1 class="page-title">Videos 📺</h1>
+
+  <div id="content"></div>
+
+  <div id="player-modal" class="player-modal hidden">
+    <div class="player-inner" id="player-inner">
+      <button class="player-close" onclick="closePlayer()">✕</button>
+    </div>
+  </div>
+
+  <script>
+    let currentIframe = null;
+
+    async function loadVideos() {
+      const content = document.getElementById('content');
+      try {
+        const res = await fetch('/api/videos');
+        const videos = await res.json();
+
+        if (!videos.length) {
+          content.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">📭</div>
+              <div class="empty-state-title">No videos yet!</div>
+              <div class="empty-state-sub">Ask a grown-up to add some videos for you.</div>
+            </div>`;
+          return;
+        }
+
+        const grid = document.createElement('div');
+        grid.className = 'videos-grid';
+        videos.forEach(v => {
+          const card = document.createElement('button');
+          card.className = 'video-card';
+          card.innerHTML = `
+            <img src="${v.thumbnail}" alt="${escHtml(v.title)}" loading="lazy">
+            <div class="video-card-info">
+              <div class="video-card-title">${escHtml(v.title)}</div>
+              <div class="video-card-channel">${escHtml(v.channelTitle || '')}</div>
+            </div>`;
+          card.onclick = () => openPlayer(v.id);
+          grid.appendChild(card);
+        });
+        content.appendChild(grid);
+      } catch (e) {
+        content.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">Couldn't load videos</div></div>`;
+      }
+    }
+
+    function openPlayer(videoId) {
+      const modal = document.getElementById('player-modal');
+      const inner = document.getElementById('player-inner');
+
+      currentIframe?.remove();
+      const iframe = document.createElement('iframe');
+      iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
+      iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+      iframe.allowFullscreen = true;
+      inner.appendChild(iframe);
+      currentIframe = iframe;
+      modal.classList.remove('hidden');
+    }
+
+    function closePlayer() {
+      currentIframe?.remove();
+      currentIframe = null;
+      document.getElementById('player-modal').classList.add('hidden');
+    }
+
+    // Close on backdrop tap
+    document.getElementById('player-modal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closePlayer();
+    });
+
+    function escHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    loadVideos();
+  </script>
+</body>
+</html>

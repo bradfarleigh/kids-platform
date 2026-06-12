@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Spelling</title>
+  <link rel="stylesheet" href="/css/kids.css">
+  <style>
+    body {
+      background: linear-gradient(160deg, #74ebd5 0%, #9face6 100%);
+    }
+
+    /* ── Mode select screen ─────────────────────────────────────── */
+    #screen-mode {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 28px; padding: 20px;
+    }
+    .mode-title {
+      font-size: clamp(32px, 7vw, 60px); font-weight: 900;
+      color: white; text-shadow: 0 3px 12px rgba(0,0,0,.2);
+    }
+    .mode-cards {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+      width: 100%; max-width: 500px;
+    }
+    .mode-card {
+      background: white; border-radius: 24px; padding: 32px 16px;
+      text-align: center; cursor: pointer; box-shadow: 0 8px 32px rgba(0,0,0,.12);
+      transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+      display: flex; flex-direction: column; gap: 10px; align-items: center;
+      border: none; font-family: inherit;
+    }
+    .mode-card:active { transform: scale(.93); }
+    .mode-card-icon  { font-size: clamp(48px, 10vw, 72px); line-height: 1; }
+    .mode-card-label { font-size: clamp(22px, 4.5vw, 32px); font-weight: 900; color: #1A202C; }
+    .mode-card-sub   { font-size: 14px; font-weight: 700; color: #718096; }
+    .mode-card--easy   { border-top: 6px solid #6BCB77; }
+    .mode-card--medium { border-top: 6px solid #FB923C; }
+
+    /* ── Game screen ────────────────────────────────────────────── */
+    #screen-game { display: none; flex: 1; flex-direction: column; align-items: center; width: 100%; }
+
+    .spell-header {
+      width: 100%; padding: 72px 24px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .spell-score {
+      font-size: 20px; font-weight: 900; color: white;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .spell-content {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: clamp(12px, 2.5vh, 24px);
+      padding: 0 20px 24px; width: 100%; max-width: 680px;
+    }
+
+    /* Word hint (big emoji) */
+    .word-emoji {
+      font-size: clamp(72px, 15vw, 120px);
+      line-height: 1;
+      filter: drop-shadow(0 6px 16px rgba(0,0,0,.15));
+      transition: transform .2s;
+    }
+    .word-emoji.bounce { animation: bounce-in .4s cubic-bezier(.34,1.56,.64,1); }
+
+    /* Letter slots */
+    .slots {
+      display: flex; gap: clamp(8px, 1.5vw, 14px);
+      justify-content: center; flex-wrap: nowrap;
+    }
+    .slot {
+      width:  clamp(52px, 9vw, 80px);
+      height: clamp(52px, 9vw, 80px);
+      border-radius: 14px;
+      border: 3px dashed rgba(255,255,255,.6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(26px, 5vw, 44px);
+      font-weight: 900; color: white;
+      transition: transform .2s, background .2s;
+      background: rgba(255,255,255,.15);
+    }
+    .slot.filled {
+      background: #6BCB77;
+      border: 3px solid transparent;
+      transform: scale(1.08);
+      color: white;
+    }
+
+    /* Letter tiles */
+    .tiles {
+      display: flex; gap: clamp(8px, 1.5vw, 14px);
+      justify-content: center; flex-wrap: wrap;
+    }
+    .tile {
+      width:  clamp(56px, 9.5vw, 84px);
+      height: clamp(56px, 9.5vw, 84px);
+      border-radius: 14px;
+      font-size: clamp(28px, 5.5vw, 48px);
+      font-weight: 900;
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,.2);
+      transition: transform .1s, opacity .2s;
+      font-family: inherit;
+    }
+    .tile:active { transform: scale(.9); }
+    .tile[disabled] { opacity: 0; pointer-events: none; }
+
+    /* Word complete flash */
+    .word-done-flash {
+      position: fixed; inset: 0; z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(107,203,119,.85);
+      font-size: 80px;
+      animation: flash-in .25s ease;
+      pointer-events: none;
+    }
+    @keyframes flash-in {
+      from { opacity: 0; transform: scale(.5); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .hint-btn {
+      background: rgba(255,255,255,.25); border: none; border-radius: 14px;
+      padding: 10px 20px; font-family: inherit; font-size: 16px; font-weight: 800;
+      color: white; cursor: pointer; backdrop-filter: blur(8px);
+      transition: opacity .2s;
+    }
+    .hint-btn:active { opacity: .7; }
+  </style>
+</head>
+<body>
+  <button class="nav-back" id="back-btn">←</button>
+
+  <!-- Mode selection -->
+  <div id="screen-mode">
+    <div class="mode-title">Spelling 📝</div>
+    <div class="mode-cards">
+      <button class="mode-card mode-card--easy" data-mode="easy">
+        <span class="mode-card-icon">🐣</span>
+        <span class="mode-card-label">Easy</span>
+        <span class="mode-card-sub">Ages 4+  •  3–4 letters</span>
+      </button>
+      <button class="mode-card mode-card--medium" data-mode="medium">
+        <span class="mode-card-icon">🦁</span>
+        <span class="mode-card-label">Medium</span>
+        <span class="mode-card-sub">Ages 6+  •  4–6 letters</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Game play -->
+  <div id="screen-game">
+    <div class="spell-header">
+      <div class="progress-dots" id="progress"></div>
+      <div class="spell-score">⭐ <span id="score-val">0</span></div>
+    </div>
+    <div class="spell-content">
+      <div class="word-emoji" id="word-emoji"></div>
+      <div class="slots" id="slots"></div>
+      <div class="tiles" id="tiles"></div>
+      <button class="hint-btn" id="hint-btn">💡 Hint</button>
+    </div>
+  </div>
+
+  <script src="/games/_lib/confetti.js"></script>
+  <script src="/games/_lib/KidsGame.js"></script>
+  <script>
+    // ── Word bank ─────────────────────────────────────────────────
+    const WORDS = {
+      easy: [
+        { w:'CAT',  e:'🐱' }, { w:'DOG',  e:'🐶' }, { w:'BUS',  e:'🚌' },
+        { w:'SUN',  e:'☀️' }, { w:'HAT',  e:'🎩' }, { w:'CUP',  e:'☕' },
+        { w:'COW',  e:'🐮' }, { w:'PIG',  e:'🐷' }, { w:'HEN',  e:'🐔' },
+        { w:'EGG',  e:'🥚' }, { w:'ANT',  e:'🐜' }, { w:'BAG',  e:'👜' },
+        { w:'BED',  e:'🛏️' }, { w:'CAR',  e:'🚗' }, { w:'BOX',  e:'📦' },
+        { w:'FLY',  e:'🪰' }, { w:'OWL',  e:'🦉' }, { w:'FOX',  e:'🦊' },
+        { w:'JAM',  e:'🫙' }, { w:'NET',  e:'🥅' },
+      ],
+      medium: [
+        { w:'APPLE',  e:'🍎' }, { w:'BREAD',  e:'🍞' }, { w:'CLOCK',  e:'🕐' },
+        { w:'FROG',   e:'🐸' }, { w:'HORSE',  e:'🐴' }, { w:'HOUSE',  e:'🏠' },
+        { w:'JUICE',  e:'🧃' }, { w:'LEMON',  e:'🍋' }, { w:'OCEAN',  e:'🌊' },
+        { w:'PLANE',  e:'✈️' }, { w:'ROBOT',  e:'🤖' }, { w:'SHARK',  e:'🦈' },
+        { w:'SNAKE',  e:'🐍' }, { w:'TIGER',  e:'🐯' }, { w:'TRAIN',  e:'🚂' },
+        { w:'WHALE',  e:'🐋' }, { w:'GRASS',  e:'🌿' }, { w:'STORM',  e:'⛈️' },
+        { w:'PIZZA',  e:'🍕' }, { w:'QUEEN',  e:'👸' },
+      ],
+    };
+
+    const WORDS_PER_GAME = 5;
+
+    // ── Game state ────────────────────────────────────────────────
+    let game, mode, wordList, wordIndex, currentWord;
+    let currentSlot, totalMistakes, wrongOnSlot, tileColors;
+
+    // ── DOM refs ──────────────────────────────────────────────────
+    const screenMode = document.getElementById('screen-mode');
+    const screenGame = document.getElementById('screen-game');
+    const progressEl = document.getElementById('progress');
+    const scoreEl    = document.getElementById('score-val');
+    const emojiEl    = document.getElementById('word-emoji');
+    const slotsEl    = document.getElementById('slots');
+    const tilesEl    = document.getElementById('tiles');
+    const hintBtn    = document.getElementById('hint-btn');
+    const backBtn    = document.getElementById('back-btn');
+
+    // ── Init ──────────────────────────────────────────────────────
+    class SpellingGame extends KidsGame {
+      init() {
+        document.querySelectorAll('.mode-card').forEach(btn =>
+          btn.addEventListener('click', () => startGame(btn.dataset.mode)));
+        hintBtn.addEventListener('click', showHint);
+        backBtn.addEventListener('click', () => {
+          if (screenGame.style.display !== 'none') {
+            showModeSelect();
+          } else {
+            this.home();
+          }
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      game = new SpellingGame({ name: 'Spelling' });
+      game.init();
+    });
+
+    // ── Game flow ─────────────────────────────────────────────────
+    function startGame(selectedMode) {
+      mode = selectedMode;
+      wordList = shuffle([...WORDS[mode]]).slice(0, WORDS_PER_GAME);
+      wordIndex = 0;
+      totalMistakes = 0;
+      scoreEl.textContent = '0';
+
+      screenMode.style.display = 'none';
+      screenGame.style.display = 'flex';
+
+      renderProgress();
+      renderWord(wordList[0]);
+    }
+
+    function showModeSelect() {
+      screenGame.style.display = 'none';
+      screenMode.style.display = 'flex';
+    }
+
+    function renderProgress() {
+      progressEl.innerHTML = '';
+      for (let i = 0; i < WORDS_PER_GAME; i++) {
+        const d = document.createElement('div');
+        d.className = 'dot' + (i < wordIndex ? ' done' : i === wordIndex ? ' current' : '');
+        progressEl.appendChild(d);
+      }
+    }
+
+    function renderWord(wordData) {
+      currentWord  = wordData.w;
+      currentSlot  = 0;
+      wrongOnSlot  = 0;
+      tileColors   = {};
+
+      // Emoji hint
+      emojiEl.textContent = wordData.e;
+      emojiEl.classList.remove('bounce');
+      void emojiEl.offsetWidth;
+      emojiEl.classList.add('bounce');
+
+      // Slots
+      slotsEl.innerHTML = '';
+      for (let i = 0; i < currentWord.length; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'slot';
+        slot.dataset.index = i;
+        slotsEl.appendChild(slot);
+      }
+
+      // Tiles — shuffle the actual letters
+      const letters = currentWord.split('');
+      const shuffled = shuffle([...letters]);
+
+      tilesEl.innerHTML = '';
+      shuffled.forEach((letter, i) => {
+        const colorIdx = i % 6;
+        const tile = document.createElement('button');
+        tile.className = `tile tc${colorIdx}`;
+        tile.textContent = letter;
+        tile.dataset.letter = letter;
+        tile.dataset.color  = colorIdx;
+        tile.addEventListener('click', () => handleTap(tile));
+        tilesEl.appendChild(tile);
+        tileColors[tile] = colorIdx;
+      });
+    }
+
+    function handleTap(tile) {
+      if (tile.disabled) return;
+
+      // Unlock AudioContext on first user gesture
+      game._ctx();
+
+      const correct = tile.dataset.letter === currentWord[currentSlot];
+
+      if (correct) {
+        // Fill slot
+        const slot = slotsEl.children[currentSlot];
+        slot.textContent  = tile.dataset.letter;
+        slot.classList.add('filled');
+
+        // Remove hint if active
+        clearHints();
+
+        // Disable tile
+        tile.disabled = true;
+
+        game.sound('pop');
+        currentSlot++;
+        wrongOnSlot = 0;
+
+        if (currentSlot === currentWord.length) {
+          setTimeout(handleWordComplete, 300);
+        }
+      } else {
+        game.wrong(tile);
+        totalMistakes++;
+        wrongOnSlot++;
+        if (wrongOnSlot >= 2) showHint();
+      }
+    }
+
+    function showHint() {
+      clearHints();
+      const needed = currentWord[currentSlot];
+      Array.from(tilesEl.children).forEach(t => {
+        if (!t.disabled && t.dataset.letter === needed) {
+          t.classList.add('kg-hint');
+        }
+      });
+    }
+
+    function clearHints() {
+      tilesEl.querySelectorAll('.kg-hint').forEach(t => t.classList.remove('kg-hint'));
+    }
+
+    async function handleWordComplete() {
+      // Brief "well done" flash
+      const flash = document.createElement('div');
+      flash.className = 'word-done-flash';
+      flash.textContent = '🎉';
+      document.body.appendChild(flash);
+      game.sound('cheer');
+
+      // Update score
+      const points = Math.max(10, 30 - totalMistakes * 3);
+      scoreEl.textContent = parseInt(scoreEl.textContent) + points;
+
+      await delay(900);
+      flash.remove();
+
+      wordIndex++;
+      renderProgress();
+
+      if (wordIndex >= WORDS_PER_GAME) {
+        const stars = totalMistakes <= 3 ? 3 : totalMistakes <= 7 ? 2 : 1;
+        game.showWin(stars, action => {
+          if (action === 'again') startGame(mode);
+        });
+      } else {
+        renderWord(wordList[wordIndex]);
+      }
+    }
+
+    // ── Utilities ─────────────────────────────────────────────────
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function delay(ms) {
+      return new Promise(r => setTimeout(r, ms));
+    }
+  </script>
+</body>
+</html>

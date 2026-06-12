@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Block Drop</title>
+  <link rel="stylesheet" href="/css/kids.css">
+  <style>
+    body {
+      background: linear-gradient(160deg, #1a1a2e 0%, #16213e 100%);
+      overflow: hidden;
+    }
+
+    /* ── Layout shell ───────────────────────────────────────────── */
+    #game-page {
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    /* ── Top stats bar ──────────────────────────────────────────── */
+    #stats-bar {
+      width: 100%;
+      max-width: 480px;
+      padding: 68px 16px 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .stat-pill {
+      background: rgba(255,255,255,.12);
+      backdrop-filter: blur(8px);
+      border-radius: 14px;
+      padding: 6px 14px;
+      text-align: center;
+      flex: 1;
+    }
+    .stat-label {
+      font-size: 10px;
+      font-weight: 800;
+      color: rgba(255,255,255,.55);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .stat-value {
+      font-size: 22px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.1;
+    }
+
+    /* ── Middle row: game canvas + next piece ───────────────────── */
+    #play-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 6px 12px;
+      min-height: 0;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    #game-canvas {
+      display: block;
+      border-radius: 10px;
+      image-rendering: pixelated;
+      flex-shrink: 0;
+    }
+
+    #side-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .next-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(255,255,255,.5);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    #next-canvas {
+      display: block;
+      border-radius: 8px;
+      background: rgba(0,0,0,.35);
+      image-rendering: pixelated;
+    }
+
+    /* ── Control buttons ────────────────────────────────────────── */
+    #controls {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      gap: 8px;
+      padding: 6px 12px 12px;
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      flex-shrink: 0;
+    }
+
+    .ctrl-btn {
+      flex: 1;
+      height: 72px;
+      border: none;
+      border-radius: 18px;
+      background: rgba(255,255,255,.14);
+      color: white;
+      font-size: 28px;
+      font-family: inherit;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      touch-action: none;
+      transition: background .08s, transform .08s;
+      box-shadow: 0 4px 14px rgba(0,0,0,.25);
+    }
+    .ctrl-btn:active,
+    .ctrl-btn.pressed {
+      background: rgba(255,255,255,.28);
+      transform: scale(.93);
+    }
+
+    /* ── Start overlay ──────────────────────────────────────────── */
+    #start-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      background: rgba(0,0,0,.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #start-overlay.hidden {
+      display: none;
+    }
+    .start-card {
+      background: #1e2a45;
+      border: 2px solid rgba(255,255,255,.12);
+      border-radius: 28px;
+      padding: 44px 36px 36px;
+      text-align: center;
+      max-width: 320px;
+      width: 88%;
+      box-shadow: 0 24px 64px rgba(0,0,0,.5);
+      animation: bounce-in .4s cubic-bezier(.34,1.56,.64,1);
+    }
+    .start-title {
+      font-size: 46px;
+      font-weight: 900;
+      color: white;
+      margin-bottom: 4px;
+    }
+    .start-sub {
+      font-size: 15px;
+      font-weight: 700;
+      color: rgba(255,255,255,.5);
+      margin-bottom: 32px;
+    }
+    .start-preview {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+      margin-bottom: 28px;
+    }
+    .start-block {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+    }
+    #start-play-btn {
+      background: #FF6B6B;
+      color: white;
+      border: none;
+      border-radius: 16px;
+      padding: 18px 48px;
+      font-family: inherit;
+      font-size: 22px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(255,107,107,.4);
+      transition: transform .1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #start-play-btn:active { transform: scale(.93); }
+
+    /* ── Line clear flash ───────────────────────────────────────── */
+    @keyframes line-flash {
+      0%   { opacity: 1; }
+      50%  { opacity: .1; }
+      100% { opacity: 1; }
+    }
+    .flash-row {
+      animation: line-flash .18s ease 2;
+    }
+  </style>
+</head>
+<body>
+  <button class="nav-back" id="back-btn" aria-label="Back">←</button>
+
+  <div id="game-page">
+    <!-- Stats -->
+    <div id="stats-bar">
+      <div class="stat-pill">
+        <div class="stat-label">Score</div>
+        <div class="stat-value" id="score-val">0</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-label">Level</div>
+        <div class="stat-value" id="level-val">1</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-label">Lines</div>
+        <div class="stat-value" id="lines-val">0</div>
+      </div>
+    </div>
+
+    <!-- Play area -->
+    <div id="play-area">
+      <canvas id="game-canvas"></canvas>
+      <div id="side-panel">
+        <div class="next-label">Next</div>
+        <canvas id="next-canvas" width="80" height="80"></canvas>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div id="controls">
+      <button class="ctrl-btn" id="btn-left"  aria-label="Move left">◀</button>
+      <button class="ctrl-btn" id="btn-rotate" aria-label="Rotate">🔄</button>
+      <button class="ctrl-btn" id="btn-right" aria-label="Move right">▶</button>
+      <button class="ctrl-btn" id="btn-down"  aria-label="Soft drop">⬇️</button>
+    </div>
+  </div>
+
+  <!-- Start overlay -->
+  <div id="start-overlay">
+    <div class="start-card">
+      <div class="start-title">Block Drop</div>
+      <div class="start-sub">Stack and clear lines!</div>
+      <div class="start-preview">
+        <div class="start-block" style="background:#00d4ff"></div>
+        <div class="start-block" style="background:#ffdd00"></div>
+        <div class="start-block" style="background:#a855f7"></div>
+        <div class="start-block" style="background:#22c55e"></div>
+        <div class="start-block" style="background:#ef4444"></div>
+        <div class="start-block" style="background:#3b82f6"></div>
+        <div class="start-block" style="background:#fb923c"></div>
+      </div>
+      <button id="start-play-btn">Play ▶</button>
+    </div>
+  </div>
+
+  <script src="/games/_lib/confetti.js"></script>
+  <script src="/games/_lib/KidsGame.js"></script>
+  <script>
+  // ═══════════════════════════════════════════════════════════════
+  // CONSTANTS
+  // ═══════════════════════════════════════════════════════════════
+  const COLS = 10;
+  const ROWS = 20;
+  const BORDER_RADIUS_RATIO = 0.14; // cell corner rounding as fraction of cell size
+
+  // Drop speed (ms per row) indexed by level 1–10
+  const DROP_SPEEDS = [900, 780, 660, 540, 430, 330, 250, 190, 140, 100];
+
+  // Score for clearing n lines at once, before level multiplier
+  const LINE_SCORES = [0, 100, 300, 500, 800];
+
+  // Tetromino shapes — 4 rotations each, stored as [row,col] offsets from pivot
+  const PIECES = {
+    I: {
+      color: '#00d4ff',
+      shapes: [
+        [[1,0],[1,1],[1,2],[1,3]],
+        [[0,2],[1,2],[2,2],[3,2]],
+        [[2,0],[2,1],[2,2],[2,3]],
+        [[0,1],[1,1],[2,1],[3,1]],
+      ],
+      size: 4,
+    },
+    O: {
+      color: '#ffdd00',
+      shapes: [
+        [[0,0],[0,1],[1,0],[1,1]],
+        [[0,0],[0,1],[1,0],[1,1]],
+        [[0,0],[0,1],[1,0],[1,1]],
+        [[0,0],[0,1],[1,0],[1,1]],
+      ],
+      size: 2,
+    },
+    T: {
+      color: '#a855f7',
+      shapes: [
+        [[0,1],[1,0],[1,1],[1,2]],
+        [[0,1],[1,1],[1,2],[2,1]],
+        [[1,0],[1,1],[1,2],[2,1]],
+        [[0,1],[1,0],[1,1],[2,1]],
+      ],
+      size: 3,
+    },
+    S: {
+      color: '#22c55e',
+      shapes: [
+        [[0,1],[0,2],[1,0],[1,1]],
+        [[0,1],[1,1],[1,2],[2,2]],
+        [[1,1],[1,2],[2,0],[2,1]],
+        [[0,0],[1,0],[1,1],[2,1]],
+      ],
+      size: 3,
+    },
+    Z: {
+      color: '#ef4444',
+      shapes: [
+        [[0,0],[0,1],[1,1],[1,2]],
+        [[0,2],[1,1],[1,2],[2,1]],
+        [[1,0],[1,1],[2,1],[2,2]],
+        [[0,1],[1,0],[1,1],[2,0]],
+      ],
+      size: 3,
+    },
+    J: {
+      color: '#3b82f6',
+      shapes: [
+        [[0,0],[1,0],[1,1],[1,2]],
+        [[0,1],[0,2],[1,1],[2,1]],
+        [[1,0],[1,1],[1,2],[2,2]],
+        [[0,1],[1,1],[2,0],[2,1]],
+      ],
+      size: 3,
+    },
+    L: {
+      color: '#fb923c',
+      shapes: [
+        [[0,2],[1,0],[1,1],[1,2]],
+        [[0,1],[1,1],[2,1],[2,2]],
+        [[1,0],[1,1],[1,2],[2,0]],
+        [[0,0],[0,1],[1,1],[2,1]],
+      ],
+      size: 3,
+    },
+  };
+  const PIECE_KEYS = Object.keys(PIECES);
+
+  // ═══════════════════════════════════════════════════════════════
+  // GAME CLASS
+  // ═══════════════════════════════════════════════════════════════
+  class BlocksGame extends KidsGame {
+    constructor() {
+      super({ name: 'Block Drop' });
+
+      // Canvas setup
+      this.canvas     = document.getElementById('game-canvas');
+      this.ctx        = this.canvas.getContext('2d');
+      this.nextCanvas = document.getElementById('next-canvas');
+      this.nextCtx    = this.nextCanvas.getContext('2d');
+
+      // DOM refs
+      this.scoreEl = document.getElementById('score-val');
+      this.levelEl = document.getElementById('level-val');
+      this.linesEl = document.getElementById('lines-val');
+
+      // State
+      this.board      = [];
+      this.current    = null;
+      this.nextPiece  = null;
+      this.score      = 0;
+      this.level      = 1;
+      this.lines      = 0;
+      this.dropTimer  = null;
+      this.running    = false;
+      this.clearing   = false; // true while line-clear animation plays
+
+      this.cellSize   = 30; // computed in resize()
+    }
+
+    init() {
+      document.getElementById('back-btn').addEventListener('click', () => this.home());
+      document.getElementById('start-play-btn').addEventListener('click', () => this._startFromOverlay());
+
+      this._setupControls();
+
+      window.addEventListener('resize', () => this._resize());
+      this._resize();
+    }
+
+    // ── Start / restart ────────────────────────────────────────────
+    _startFromOverlay() {
+      document.getElementById('start-overlay').classList.add('hidden');
+      this.start();
+    }
+
+    start() {
+      this._stopDrop();
+      this.board     = this._emptyBoard();
+      this.score     = 0;
+      this.level     = 1;
+      this.lines     = 0;
+      this.running   = true;
+      this.clearing  = false;
+      this._updateStats();
+
+      this.nextPiece = this._randomPiece();
+      this._spawnPiece();
+      this._scheduleDrop();
+      this._render();
+    }
+
+    // ── Board helpers ──────────────────────────────────────────────
+    _emptyBoard() {
+      return Array.from({ length: ROWS }, () => new Array(COLS).fill(null));
+    }
+
+    _randomPiece() {
+      const key = PIECE_KEYS[Math.floor(Math.random() * PIECE_KEYS.length)];
+      return { key, rotation: 0 };
+    }
+
+    _spawnPiece() {
+      this.current = {
+        ...this.nextPiece,
+        row: 0,
+        col: Math.floor(COLS / 2) - Math.floor(PIECES[this.nextPiece.key].size / 2),
+      };
+      this.nextPiece = this._randomPiece();
+      this._drawNextPiece();
+
+      if (!this._isValid(this.current, 0, 0)) {
+        // Can't spawn — game over
+        this.running = false;
+        this._stopDrop();
+        this._render();
+        setTimeout(() => {
+          this.showLose('Game Over! 💪', action => {
+            if (action === 'again') this.start();
+          });
+        }, 300);
+      }
+    }
+
+    // ── Piece validation & movement ────────────────────────────────
+    _cells(piece, dr = 0, dc = 0, rot = null) {
+      const def  = PIECES[piece.key];
+      const r    = rot !== null ? rot : piece.rotation;
+      return def.shapes[r % def.shapes.length].map(([pr, pc]) => [
+        piece.row + pr + dr,
+        piece.col + pc + dc,
+      ]);
+    }
+
+    _isValid(piece, dr, dc, rot = null) {
+      return this._cells(piece, dr, dc, rot).every(([r, c]) =>
+        r >= 0 && r < ROWS && c >= 0 && c < COLS && !this.board[r][c]
+      );
+    }
+
+    _lock() {
+      const color = PIECES[this.current.key].color;
+      this._cells(this.current).forEach(([r, c]) => {
+        if (r >= 0) this.board[r][c] = color;
+      });
+    }
+
+    // ── Drop logic ─────────────────────────────────────────────────
+    _scheduleDrop() {
+      this._stopDrop();
+      const speed = DROP_SPEEDS[Math.min(this.level - 1, DROP_SPEEDS.length - 1)];
+      this.dropTimer = setInterval(() => this._stepDown(), speed);
+    }
+
+    _stopDrop() {
+      if (this.dropTimer) { clearInterval(this.dropTimer); this.dropTimer = null; }
+    }
+
+    _stepDown() {
+      if (!this.running || this.clearing) return;
+      if (this._isValid(this.current, 1, 0)) {
+        this.current.row++;
+        this._render();
+      } else {
+        this._placePiece();
+      }
+    }
+
+    _placePiece() {
+      this._lock();
+      this._clearLines();
+    }
+
+    // ── Line clearing ──────────────────────────────────────────────
+    _clearLines() {
+      const full = [];
+      for (let r = 0; r < ROWS; r++) {
+        if (this.board[r].every(c => c !== null)) full.push(r);
+      }
+
+      if (full.length === 0) {
+        this._spawnPiece();
+        this._render();
+        return;
+      }
+
+      // Brief flash then remove
+      this.clearing = true;
+      this._render();
+      this._flashRows(full, () => {
+        // Remove cleared rows and add empty rows at top
+        for (const r of full) {
+          this.board.splice(r, 1);
+          this.board.unshift(new Array(COLS).fill(null));
+        }
+
+        const n = full.length;
+        this.lines += n;
+        this.score += LINE_SCORES[n] * this.level;
+        this.level  = Math.min(10, Math.floor(this.lines / 10) + 1);
+        this._updateStats();
+        this._scheduleDrop(); // refresh speed in case level changed
+
+        if (n === 4) this.celebrate();
+
+        this.clearing = false;
+        this._spawnPiece();
+        this._render();
+      });
+    }
+
+    _flashRows(rows, done) {
+      // Use canvas overlay to flash the rows white, then call done
+      let count = 0;
+      const FLASH_COUNT = 3;
+      const HALF = 80; // ms per half-flash
+
+      const flash = () => {
+        count++;
+        this._render(count % 2 === 1 ? rows : []);
+        if (count < FLASH_COUNT * 2) {
+          setTimeout(flash, HALF);
+        } else {
+          done();
+        }
+      };
+      setTimeout(flash, HALF);
+    }
+
+    // ── Ghost piece ────────────────────────────────────────────────
+    _ghostRow() {
+      let dr = 0;
+      while (this._isValid(this.current, dr + 1, 0)) dr++;
+      return dr;
+    }
+
+    // ── Rendering ──────────────────────────────────────────────────
+    _resize() {
+      const page    = document.getElementById('game-page');
+      const stats   = document.getElementById('stats-bar');
+      const ctrl    = document.getElementById('controls');
+      const side    = document.getElementById('side-panel');
+
+      // Available height for play area
+      const availH = page.clientHeight
+                   - stats.offsetHeight
+                   - ctrl.offsetHeight
+                   - 12; // padding
+
+      // Available width for canvas (leave room for side panel ~96px + gaps)
+      const availW = Math.min(page.clientWidth, 480) - 96 - 12 * 3;
+
+      // Cell size: fit both dimensions
+      const byH = Math.floor((availH - 12) / ROWS);
+      const byW = Math.floor(availW / COLS);
+      this.cellSize = Math.max(14, Math.min(byH, byW));
+
+      const cw = this.cellSize * COLS;
+      const ch = this.cellSize * ROWS;
+
+      this.canvas.width  = cw;
+      this.canvas.height = ch;
+      this.canvas.style.width  = cw + 'px';
+      this.canvas.style.height = ch + 'px';
+
+      // Next canvas — fixed 80×80 with 4×4 grid
+      this.nextCanvas.width  = 80;
+      this.nextCanvas.height = 80;
+
+      if (this.running) this._render();
+    }
+
+    _render(flashRows = null) {
+      const ctx  = this.ctx;
+      const cs   = this.cellSize;
+      const W    = this.canvas.width;
+      const H    = this.canvas.height;
+
+      // Background
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, 0, W, H);
+
+      // Grid lines
+      ctx.strokeStyle = 'rgba(255,255,255,.045)';
+      ctx.lineWidth = 1;
+      for (let c = 0; c <= COLS; c++) {
+        ctx.beginPath(); ctx.moveTo(c * cs, 0); ctx.lineTo(c * cs, H); ctx.stroke();
+      }
+      for (let r = 0; r <= ROWS; r++) {
+        ctx.beginPath(); ctx.moveTo(0, r * cs); ctx.lineTo(W, r * cs); ctx.stroke();
+      }
+
+      // Locked cells
+      for (let r = 0; r < ROWS; r++) {
+        const isFlash = flashRows && flashRows.includes(r);
+        for (let c = 0; c < COLS; c++) {
+          if (this.board[r][c]) {
+            this._drawCell(ctx, r, c, isFlash ? '#ffffff' : this.board[r][c], cs);
+          }
+        }
+      }
+
+      if (!this.running || !this.current) return;
+
+      // Ghost piece
+      const ghostDr = this._ghostRow();
+      if (ghostDr > 0 || !this._isValid(this.current, 0, 0)) {
+        const color = PIECES[this.current.key].color;
+        this._cells(this.current, ghostDr, 0).forEach(([r, c]) => {
+          if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+            this._drawCell(ctx, r, c, color, cs, 0.18);
+          }
+        });
+      }
+
+      // Active piece
+      const color = PIECES[this.current.key].color;
+      this._cells(this.current).forEach(([r, c]) => {
+        if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+          this._drawCell(ctx, r, c, color, cs, 1);
+        }
+      });
+    }
+
+    _drawCell(ctx, row, col, color, cs, alpha = 1) {
+      const x  = col * cs;
+      const y  = row * cs;
+      const r  = Math.max(2, Math.round(cs * BORDER_RADIUS_RATIO));
+      const p  = 1.5; // padding inside grid line
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      // Base fill
+      ctx.fillStyle = color;
+      this._roundRect(ctx, x + p, y + p, cs - p * 2, cs - p * 2, r);
+      ctx.fill();
+
+      if (alpha > 0.3) {
+        // Highlight — top-left lighter edge
+        const grad = ctx.createLinearGradient(x, y, x + cs, y + cs);
+        grad.addColorStop(0,   'rgba(255,255,255,.28)');
+        grad.addColorStop(.45, 'rgba(255,255,255,.06)');
+        grad.addColorStop(1,   'rgba(0,0,0,.22)');
+        ctx.fillStyle = grad;
+        this._roundRect(ctx, x + p, y + p, cs - p * 2, cs - p * 2, r);
+        ctx.fill();
+
+        // Thin bright top edge
+        ctx.fillStyle = 'rgba(255,255,255,.35)';
+        this._roundRect(ctx, x + p, y + p, cs - p * 2, Math.max(2, cs * .13), r / 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    _roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    _drawNextPiece() {
+      const ctx = this.nextCtx;
+      const W   = this.nextCanvas.width;
+      const H   = this.nextCanvas.height;
+
+      ctx.fillStyle = 'rgba(0,0,0,.35)';
+      ctx.fillRect(0, 0, W, H);
+
+      if (!this.nextPiece) return;
+
+      const def    = PIECES[this.nextPiece.key];
+      const cells  = def.shapes[0];
+      const cs     = 16; // fixed cell size for preview
+
+      // Centre the preview
+      const minR = Math.min(...cells.map(c => c[0]));
+      const maxR = Math.max(...cells.map(c => c[0]));
+      const minC = Math.min(...cells.map(c => c[1]));
+      const maxC = Math.max(...cells.map(c => c[1]));
+      const pw   = (maxC - minC + 1) * cs;
+      const ph   = (maxR - minR + 1) * cs;
+      const ox   = Math.floor((W - pw) / 2);
+      const oy   = Math.floor((H - ph) / 2);
+
+      cells.forEach(([r, c]) => {
+        const rx = ox + (c - minC) * cs;
+        const ry = oy + (r - minR) * cs;
+        this._drawCell(ctx, 0, 0, def.color, cs, 1);
+        // Override position since _drawCell uses row/col — draw directly
+        ctx.save();
+        ctx.fillStyle = def.color;
+        const pad = 1.5;
+        const rad = Math.max(2, Math.round(cs * BORDER_RADIUS_RATIO));
+        this._roundRect(ctx, rx + pad, ry + pad, cs - pad * 2, cs - pad * 2, rad);
+        ctx.fill();
+        const grad = ctx.createLinearGradient(rx, ry, rx + cs, ry + cs);
+        grad.addColorStop(0,   'rgba(255,255,255,.28)');
+        grad.addColorStop(.45, 'rgba(255,255,255,.06)');
+        grad.addColorStop(1,   'rgba(0,0,0,.22)');
+        ctx.fillStyle = grad;
+        this._roundRect(ctx, rx + pad, ry + pad, cs - pad * 2, cs - pad * 2, rad);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.35)';
+        this._roundRect(ctx, rx + pad, ry + pad, cs - pad * 2, Math.max(2, cs * .13), rad / 2);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    // ── Stats ──────────────────────────────────────────────────────
+    _updateStats() {
+      this.scoreEl.textContent = this.score.toLocaleString();
+      this.levelEl.textContent = this.level;
+      this.linesEl.textContent = this.lines;
+    }
+
+    // ── Controls ───────────────────────────────────────────────────
+    _setupControls() {
+      // Keyboard
+      document.addEventListener('keydown', e => {
+        if (!this.running || this.clearing) return;
+        switch (e.key) {
+          case 'ArrowLeft':  e.preventDefault(); this._moveLeft();   break;
+          case 'ArrowRight': e.preventDefault(); this._moveRight();  break;
+          case 'ArrowUp':    e.preventDefault(); this._rotate();     break;
+          case 'ArrowDown':  e.preventDefault(); this._softDrop();   break;
+          case ' ':          e.preventDefault(); this._hardDrop();   break;
+        }
+      });
+
+      // Touch buttons
+      this._setupButton('btn-left',   () => this._moveLeft(),   true);
+      this._setupButton('btn-right',  () => this._moveRight(),  true);
+      this._setupButton('btn-rotate', () => this._rotate(),     false);
+      this._setupButton('btn-down',   () => this._softDrop(),   false);
+    }
+
+    _setupButton(id, action, autoRepeat) {
+      const btn = document.getElementById(id);
+      let holdTimer  = null;
+      let repeatTimer = null;
+      const HOLD_DELAY  = 280; // ms before auto-repeat starts
+      const REPEAT_RATE = 90;  // ms between repeats
+
+      const press = (e) => {
+        e.preventDefault();
+        if (!this.running || this.clearing) return;
+        btn.classList.add('pressed');
+        action();
+        this.sound('click');
+
+        if (autoRepeat) {
+          holdTimer = setTimeout(() => {
+            repeatTimer = setInterval(() => {
+              if (this.running && !this.clearing) action();
+            }, REPEAT_RATE);
+          }, HOLD_DELAY);
+        }
+      };
+
+      const release = () => {
+        btn.classList.remove('pressed');
+        clearTimeout(holdTimer);
+        clearInterval(repeatTimer);
+        holdTimer = null;
+        repeatTimer = null;
+      };
+
+      btn.addEventListener('pointerdown', press);
+      btn.addEventListener('pointerup',   release);
+      btn.addEventListener('pointerleave', release);
+      btn.addEventListener('pointercancel', release);
+    }
+
+    _moveLeft() {
+      if (this._isValid(this.current, 0, -1)) {
+        this.current.col--;
+        this._render();
+      }
+    }
+
+    _moveRight() {
+      if (this._isValid(this.current, 0, 1)) {
+        this.current.col++;
+        this._render();
+      }
+    }
+
+    _rotate() {
+      const def     = PIECES[this.current.key];
+      const nextRot = (this.current.rotation + 1) % def.shapes.length;
+
+      // Try plain rotation, then wall-kick left/right
+      if      (this._isValid(this.current, 0, 0, nextRot)) {
+        this.current.rotation = nextRot;
+      } else if (this._isValid(this.current, 0, 1, nextRot)) {
+        this.current.col++;
+        this.current.rotation = nextRot;
+      } else if (this._isValid(this.current, 0, -1, nextRot)) {
+        this.current.col--;
+        this.current.rotation = nextRot;
+      } else if (this._isValid(this.current, 0, 2, nextRot)) {
+        this.current.col += 2;
+        this.current.rotation = nextRot;
+      } else if (this._isValid(this.current, 0, -2, nextRot)) {
+        this.current.col -= 2;
+        this.current.rotation = nextRot;
+      }
+      this._render();
+    }
+
+    _softDrop() {
+      if (this._isValid(this.current, 1, 0)) {
+        this.current.row++;
+        this.score += 1;
+        this._updateStats();
+        this._render();
+        // Reset the drop timer so we don't double-drop
+        this._scheduleDrop();
+      } else {
+        this._placePiece();
+      }
+    }
+
+    _hardDrop() {
+      const dr = this._ghostRow();
+      this.current.row += dr;
+      this.score += dr * 2;
+      this._updateStats();
+      this._placePiece();
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // BOOT
+  // ═══════════════════════════════════════════════════════════════
+  document.addEventListener('DOMContentLoaded', () => {
+    const game = new BlocksGame();
+    game.init();
+  });
+  </script>
+</body>
+</html>

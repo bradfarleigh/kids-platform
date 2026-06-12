@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Kids Zone</title>
+  <link rel="stylesheet" href="/css/kids.css">
+  <style>
+    body {
+      background: linear-gradient(160deg, #f9a825 0%, #e53935 50%, #8e24aa 100%);
+      justify-content: center;
+      align-items: center;
+      gap: 0;
+    }
+
+    .home-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      padding: 24px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .home-greeting {
+      text-align: center;
+    }
+    .home-greeting h1 {
+      font-size: clamp(36px, 8vw, 68px);
+      font-weight: 900;
+      color: white;
+      text-shadow: 0 4px 16px rgba(0,0,0,.25);
+      line-height: 1.1;
+    }
+    .home-greeting p {
+      font-size: clamp(18px, 4vw, 28px);
+      color: rgba(255,255,255,.85);
+      font-weight: 700;
+      margin-top: 8px;
+    }
+
+    .home-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      width: 100%;
+    }
+
+    .home-card {
+      background: white;
+      border-radius: 28px;
+      padding: 36px 20px;
+      text-align: center;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.2);
+      transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+      border: none;
+      cursor: pointer;
+    }
+    .home-card:active { transform: scale(.93); }
+
+    .home-card-icon { font-size: clamp(52px,10vw,80px); line-height: 1; }
+    .home-card-label {
+      font-size: clamp(20px,4vw,30px);
+      font-weight: 900;
+      color: var(--dark);
+    }
+
+    .home-card--videos { border-top: 6px solid #FF6B6B; }
+    .home-card--games  { border-top: 6px solid #4ECDC4; }
+
+    .admin-link {
+      position: fixed; bottom: 20px; right: 20px;
+      background: rgba(255,255,255,.15); border: none;
+      border-radius: 50%; width: 44px; height: 44px;
+      font-size: 20px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(8px); color: white;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="home-wrap anim-pop-in">
+    <div class="home-greeting">
+      <h1>Hey there! 👋</h1>
+      <p>What do you want to do?</p>
+    </div>
+    <div class="home-cards">
+      <a href="/videos.html" class="home-card home-card--videos">
+        <span class="home-card-icon">📺</span>
+        <span class="home-card-label">Watch Videos</span>
+      </a>
+      <a href="/games/" class="home-card home-card--games">
+        <span class="home-card-icon">🎮</span>
+        <span class="home-card-label">Play Games</span>
+      </a>
+    </div>
+  </div>
+  <a href="/admin.html" class="admin-link" title="Admin">⚙️</a>
+</body>
+</html>
