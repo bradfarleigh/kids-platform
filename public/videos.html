@@ -76,6 +76,20 @@
 
   <script>
     let currentIframe = null;
+    let currentPlayer = null;
+
+    // Build the iframe src using youtube-nocookie domain and enablejsapi
+    function createIframeSrc(id) {
+      const params = new URLSearchParams({
+        autoplay: '1',
+        rel: '0',
+        modestbranding: '1',
+        iv_load_policy: '3',
+        enablejsapi: '1',
+        playsinline: '1'
+      });
+      return `https://www.youtube-nocookie.com/embed/${id}?${params.toString()}`;
+    }
 
     async function loadVideos() {
       const content = document.getElementById('content');
@@ -104,30 +118,52 @@
               <div class="video-card-title">${escHtml(v.title)}</div>
               <div class="video-card-channel">${escHtml(v.channelTitle || '')}</div>
             </div>`;
-          card.onclick = () => openPlayer(v.id);
+          // pass the whole video object so we know if noRelated is set
+          card.onclick = () => openPlayer(v);
           grid.appendChild(card);
         });
         content.appendChild(grid);
+        // ensure YouTube API is available if any video requests no-related behavior
+        if (videos.some(v => v.noRelated)) ensureYouTubeApi();
       } catch (e) {
         content.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">Couldn't load videos</div></div>`;
       }
     }
 
-    function openPlayer(videoId) {
+    function openPlayer(video) {
       const modal = document.getElementById('player-modal');
       const inner = document.getElementById('player-inner');
 
+      // clean up previous
+      if (currentPlayer && typeof currentPlayer.destroy === 'function') {
+        try { currentPlayer.destroy(); } catch (e) {}
+        currentPlayer = null;
+      }
       currentIframe?.remove();
+
       const iframe = document.createElement('iframe');
-      iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
+      iframe.src = createIframeSrc(video.id);
       iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
       iframe.allowFullscreen = true;
+      // mark data attributes so the YT player handler can pick up noRelated
+      iframe.dataset.videoId = video.id;
+      if (video.noRelated) iframe.dataset.noRelated = '1';
+
       inner.appendChild(iframe);
       currentIframe = iframe;
       modal.classList.remove('hidden');
+
+      // If API is ready, create a player immediately. Otherwise the API loader will call onYouTubeIframeAPIReady
+      if (window.YT && window.YT.Player) {
+        createYTPlayerForIframe(iframe);
+      }
     }
 
     function closePlayer() {
+      if (currentPlayer && typeof currentPlayer.destroy === 'function') {
+        try { currentPlayer.destroy(); } catch (e) {}
+        currentPlayer = null;
+      }
       currentIframe?.remove();
       currentIframe = null;
       document.getElementById('player-modal').classList.add('hidden');
@@ -140,6 +176,52 @@
 
     function escHtml(s) {
       return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // --- YouTube IFrame API integration to stop and blank iframe on ended ---
+    function createYTPlayerForIframe(iframe) {
+      try {
+        const player = new YT.Player(iframe, {
+          events: {
+            onStateChange: function(event) {
+              // 0 === ended
+              if (event.data === YT.PlayerState.ENDED) {
+                const el = event.target.getIframe();
+                if (el.dataset.noRelated === '1') {
+                  try { event.target.stopVideo(); } catch (e) {}
+                  // blank the iframe src to prevent related overlay
+                  el.src = 'about:blank';
+                }
+              }
+            }
+          }
+        });
+        currentPlayer = player;
+      } catch (e) {
+        // ignore - if player creation fails we'll fallback to just removing iframe on close
+        console.warn('YT Player creation failed', e);
+      }
+    }
+
+    function onYouTubeIframeAPIReady() {
+      // create player for current iframe if present
+      if (currentIframe) createYTPlayerForIframe(currentIframe);
+    }
+
+    function ensureYouTubeApi() {
+      if (window.YT && window.YT.Player) {
+        // already available
+        if (typeof onYouTubeIframeAPIReady === 'function') onYouTubeIframeAPIReady();
+        return;
+      }
+      // avoid injecting multiple times
+      if (document.getElementById('youtube-iframe-api')) return;
+      const tag = document.createElement('script');
+      tag.id = 'youtube-iframe-api';
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(tag);
+      // the API will call window.onYouTubeIframeAPIReady(); we already define that above
+      window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
     }
 
     loadVideos();
