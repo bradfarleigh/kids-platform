@@ -25,7 +25,7 @@
 class KidsGame {
   constructor(config = {}) {
     this.name    = config.name    ?? 'Game';
-    this.backUrl = config.backUrl ?? '/games/';
+    this.backUrl = config.backUrl ?? '../';
     this._ac     = null;
   }
 
