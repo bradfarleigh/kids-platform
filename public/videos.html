@@ -151,6 +151,11 @@
     }
 
     async function init() {
+      try {
+        const cfg = await fetch('/settings.json').then(r => r.json());
+        if (cfg.videosEnabled === false) { location.replace('index.html'); return; }
+      } catch {}
+
       const content = document.getElementById('content');
       try {
         videos = await fetchVideos();

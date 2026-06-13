@@ -1,3 +1,5 @@
 {
-  "audioEnabled": true
+  "audioEnabled": true,
+  "videosEnabled": true,
+  "disabledGames": []
 }
