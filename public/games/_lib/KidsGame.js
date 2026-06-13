@@ -38,6 +38,7 @@ class KidsGame {
 
   // ── Audio ────────────────────────────────────────────────────────
   sound(name) {
+    if (KidsGame._settings?.audioEnabled === false) return;
     const ctx = this._ctx();
     if (!ctx) return;
     (KidsGame._SFX[name] ?? KidsGame._SFX.click)(ctx);
@@ -157,3 +158,6 @@ class KidsGame {
     o.stop(t + dur + .02);
   }
 }
+
+KidsGame._settings = null;
+fetch('/settings.json').then(r => r.json()).then(s => { KidsGame._settings = s; }).catch(() => {});

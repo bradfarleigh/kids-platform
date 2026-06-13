@@ -168,6 +168,14 @@
     }
 
     (async () => {
+      const [sr] = await Promise.allSettled([fetch('/settings.json').then(r => r.json())]);
+      const cfg = sr.status === 'fulfilled' ? sr.value : {};
+
+      if (cfg.videosEnabled === false) {
+        document.querySelector('.home-card--videos').style.display = 'none';
+        return;
+      }
+
       let videos = [];
       try {
         const r = await fetch('/api/videos');
