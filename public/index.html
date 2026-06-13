@@ -167,12 +167,18 @@
       hs.classList.add('anim-pop-in');
     }
 
-    fetch('/api/videos')
-      .then(r => r.json())
-      .then(videos => {
-        if (!videos.length) document.querySelector('.home-card--videos').style.display = 'none';
-      })
-      .catch(() => {});
+    (async () => {
+      let videos = [];
+      try {
+        const r = await fetch('/api/videos');
+        if (r.ok && r.headers.get('content-type')?.includes('json')) {
+          videos = await r.json();
+        } else throw new Error();
+      } catch {
+        try { videos = await (await fetch('data/videos.json')).json(); } catch {}
+      }
+      if (!videos.length) document.querySelector('.home-card--videos').style.display = 'none';
+    })();
   </script>
 </body>
 </html>

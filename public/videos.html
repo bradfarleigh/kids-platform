@@ -91,11 +91,19 @@
       return `https://www.youtube-nocookie.com/embed/${id}?${params.toString()}`;
     }
 
+    async function fetchVideos() {
+      try {
+        const res = await fetch('/api/videos');
+        if (res.ok && res.headers.get('content-type')?.includes('json')) return res.json();
+      } catch {}
+      const res = await fetch('data/videos.json');
+      return res.json();
+    }
+
     async function loadVideos() {
       const content = document.getElementById('content');
       try {
-        const res = await fetch('/api/videos');
-        const videos = await res.json();
+        const videos = await fetchVideos();
 
         if (!videos.length) {
           content.innerHTML = `
