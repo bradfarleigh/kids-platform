@@ -15,6 +15,42 @@
       gap: 0;
     }
 
+    .age-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      padding: 24px;
+      width: 100%;
+      max-width: 480px;
+    }
+    .age-question {
+      color: white;
+      font-size: clamp(28px, 7vw, 54px);
+      font-weight: 900;
+      text-shadow: 0 4px 16px rgba(0,0,0,.25);
+      text-align: center;
+    }
+    .age-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      width: 100%;
+    }
+    .age-btn {
+      aspect-ratio: 1;
+      border: none;
+      border-radius: 24px;
+      font-size: clamp(26px, 8vw, 52px);
+      font-weight: 900;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0,0,0,.2);
+      transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+      font-family: inherit;
+    }
+    .age-btn:active { transform: scale(.88); }
+
     .home-wrap {
       display: flex;
       flex-direction: column;
@@ -25,9 +61,7 @@
       max-width: 600px;
     }
 
-    .home-greeting {
-      text-align: center;
-    }
+    .home-greeting { text-align: center; }
     .home-greeting h1 {
       font-size: clamp(36px, 8vw, 68px);
       font-weight: 900;
@@ -88,7 +122,20 @@
   </style>
 </head>
 <body>
-  <div class="home-wrap anim-pop-in">
+  <div class="age-wrap" id="age-screen">
+    <h2 class="age-question">How old are you? 🎂</h2>
+    <div class="age-grid">
+      <button class="age-btn" style="background:#FF6B6B" onclick="pickAge(4)">4</button>
+      <button class="age-btn" style="background:#FB923C" onclick="pickAge(5)">5</button>
+      <button class="age-btn" style="background:#FBBF24;color:#92400E" onclick="pickAge(6)">6</button>
+      <button class="age-btn" style="background:#6BCB77" onclick="pickAge(7)">7</button>
+      <button class="age-btn" style="background:#4ECDC4" onclick="pickAge(8)">8</button>
+      <button class="age-btn" style="background:#4D96FF" onclick="pickAge(9)">9</button>
+      <button class="age-btn" style="background:#A78BFA" onclick="pickAge(10)">10</button>
+    </div>
+  </div>
+
+  <div class="home-wrap hidden" id="home-screen">
     <div class="home-greeting">
       <h1>Hey there! 👋</h1>
       <p>What do you want to do?</p>
@@ -104,8 +151,22 @@
       </a>
     </div>
   </div>
+
   <a href="admin.html" class="admin-link" title="Admin">⚙️</a>
   <script>
+    if (localStorage.getItem('kidsAge')) {
+      document.getElementById('age-screen').classList.add('hidden');
+      document.getElementById('home-screen').classList.remove('hidden');
+    }
+
+    function pickAge(n) {
+      localStorage.setItem('kidsAge', String(n));
+      document.getElementById('age-screen').classList.add('hidden');
+      const hs = document.getElementById('home-screen');
+      hs.classList.remove('hidden');
+      hs.classList.add('anim-pop-in');
+    }
+
     fetch('/api/videos')
       .then(r => r.json())
       .then(videos => {
