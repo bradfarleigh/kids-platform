@@ -118,6 +118,19 @@
   </div>
 
   <script>
+    (async () => {
+      try {
+        const cfg = await fetch('../settings.json').then(r => r.json());
+        const disabled = new Set(cfg.disabledGames ?? []);
+        if (disabled.size) {
+          document.querySelectorAll('.game-card').forEach(card => {
+            const folder = card.getAttribute('href').replace(/\/$/, '');
+            if (disabled.has(folder)) card.style.display = 'none';
+          });
+        }
+      } catch {}
+    })();
+
     const age = parseInt(localStorage.getItem('kidsAge') || '0');
     const chip = document.getElementById('age-chip');
 
