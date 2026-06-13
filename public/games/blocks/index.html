@@ -73,6 +73,7 @@
       border-radius: 10px;
       image-rendering: pixelated;
       flex-shrink: 0;
+      touch-action: none;
     }
 
     #side-panel {
@@ -774,6 +775,85 @@
       this._setupButton('btn-right',  () => this._moveRight(),  true);
       this._setupButton('btn-rotate', () => this._rotate(),     false);
       this._setupButton('btn-down',   () => this._softDrop(),   false);
+
+      this._setupSwipe();
+    }
+
+    _setupSwipe() {
+      const canvas = this.canvas;
+      let startX = 0, startY = 0, startTime = 0;
+      let movedCols = 0;
+      let axis = null;
+
+      const onStart = e => {
+        e.preventDefault();
+        const t = e.touches[0];
+        startX = t.clientX;
+        startY = t.clientY;
+        startTime = Date.now();
+        movedCols = 0;
+        axis = null;
+      };
+
+      const onMove = e => {
+        e.preventDefault();
+        if (!this.running || this.clearing) return;
+        const t = e.touches[0];
+        const dx = t.clientX - startX;
+        const dy = t.clientY - startY;
+
+        if (!axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+          axis = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v';
+        }
+
+        if (axis === 'h') {
+          const target = Math.round(dx / this.cellSize);
+          const delta = target - movedCols;
+          for (let i = 0; i < Math.abs(delta); i++) {
+            if (delta > 0) this._moveRight();
+            else this._moveLeft();
+            this.sound('click');
+          }
+          movedCols = target;
+        }
+      };
+
+      const onEnd = e => {
+        e.preventDefault();
+        if (!this.running || this.clearing) return;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - startX;
+        const dy = t.clientY - startY;
+        const dt = Math.max(1, Date.now() - startTime);
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+
+        if (absDx < 18 && absDy < 18) {
+          this._rotate();
+          this.sound('click');
+          return;
+        }
+
+        if (axis === 'v') {
+          if (dy > 0) {
+            const vel = absDy / dt;
+            if (vel > 0.4 || absDy > this.cellSize * 6) {
+              this._hardDrop();
+            } else {
+              const steps = Math.max(1, Math.floor(absDy / this.cellSize));
+              for (let i = 0; i < steps; i++) this._softDrop();
+            }
+          } else {
+            this._rotate();
+            this.sound('click');
+          }
+        }
+      };
+
+      canvas.addEventListener('touchstart',  onStart, { passive: false });
+      canvas.addEventListener('touchmove',   onMove,  { passive: false });
+      canvas.addEventListener('touchend',    onEnd,   { passive: false });
+      canvas.addEventListener('touchcancel', onEnd,   { passive: false });
     }
 
     _setupButton(id, action, autoRepeat) {
