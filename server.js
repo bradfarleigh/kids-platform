@@ -1,4 +1,5 @@
 import express from 'express';
+import { timingSafeEqual } from 'crypto';
 import { readFileSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -17,7 +18,9 @@ app.use(express.static(join(__dir, 'public')));
 function requireAdmin(req, res, next) {
   if (!ADMIN_PASSWORD) return res.status(503).json({ error: 'Admin disabled: set the ADMIN_PASSWORD environment variable' });
   const auth = req.headers['authorization'] ?? '';
-  if (auth === `Bearer ${ADMIN_PASSWORD}`) return next();
+  const expected = `Bearer ${ADMIN_PASSWORD}`;
+  const ok = auth.length === expected.length && timingSafeEqual(Buffer.from(auth), Buffer.from(expected));
+  if (ok) return next();
   res.status(401).json({ error: 'Unauthorized' });
 }
 

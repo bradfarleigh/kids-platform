@@ -256,8 +256,16 @@
       grid.appendChild(add);
     }
 
+    function sanitiseName(raw) {
+      // Defence in depth: the picker renders with textContent, so this is not the
+      // security boundary — it just keeps junk out of storage and the display.
+      // Apostrophes/hyphens/diacritics are preserved on purpose (O'Brien, Anne-Marie).
+      const clean = String(raw).replace(/[<>`]/g, '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 20);
+      return clean || 'Player';
+    }
+
     function createProfile(age) {
-      const name = nameInput.value.trim() || 'Player';
+      const name = sanitiseName(nameInput.value);
       KidsGame.addProfile(name, age);
       nameInput.value = '';
       showHome();
