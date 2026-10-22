@@ -1,5 +1,12 @@
 {
   "audioEnabled": true,
   "videosEnabled": true,
-  "disabledGames": []
+  "disabledGames": [],
+  "weeklyFocus": [
+    "or",
+    "ar",
+    "ir",
+    "er",
+    "ur"
+  ]
 }

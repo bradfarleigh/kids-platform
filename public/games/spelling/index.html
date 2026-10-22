@@ -247,7 +247,7 @@
   <script src="../_lib/words-au.js"></script>
   <script>
     const WORDS_PER_GAME = 5;
-    const STAGE_COLOURS = ['#6BCB77','#4ECDC4','#FB923C','#A78BFA','#FF6B6B','#FFE66D','#F9A8D4'];
+    const STAGE_COLOURS = ['#6BCB77','#4ECDC4','#FB923C','#A78BFA','#FF6B6B','#FFE66D','#F9A8D4','#4D96FF'];
 
     // ── Game state ────────────────────────────────────────────────
     let game, currentStage, roundWords, wordIndex, totalMistakes;
@@ -392,6 +392,7 @@
       if (wordIndex >= WORDS_PER_GAME) {
         typeActive = false;
         const stars = totalMistakes <= 3 ? 3 : totalMistakes <= 7 ? 2 : 1;
+        KidsGame.saveResult('spelling', { score: parseInt(scoreEl.textContent), stars });
         game.showWin(stars, action => { if (action === 'again') startStage(currentStage); });
       } else {
         renderWord();
@@ -655,7 +656,7 @@
         if (obj) missedWords.push(obj);
       }
       const used = new Set(missedWords.map(x => x.w));
-      const rest = AU.shuffle(stage.words.filter(x => !used.has(x.w)))
+      const rest = AU.preferFocus(stage.words.filter(x => !used.has(x.w)))
         .slice(0, WORDS_PER_GAME - missedWords.length);
       return AU.shuffle([...missedWords, ...rest]);
     }
@@ -817,6 +818,7 @@
         renderTraceProgress();
         if (traceIndex >= traceSession.length) {
           const stars = clears <= 1 ? 3 : clears <= 4 ? 2 : 1;
+          KidsGame.saveResult('spelling', { score: 0, stars });
           game.showWin(stars, cb => { if (cb === 'again') startStage(currentStage); });
         } else {
           loadTraceChar(traceSession[traceIndex]);

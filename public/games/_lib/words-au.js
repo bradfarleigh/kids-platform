@@ -66,6 +66,27 @@ AU.STAGES = [
     { w:'bone', g:['b','o','n','e'], e:'🦴' }, { w:'nose', g:['n','o','s','e'], e:'👃' },
     { w:'rose', g:['r','o','s','e'], e:'🌹' },
   ]},
+  { id:8, icon:'⭐', label:'R Sounds', ages:'6–7', sub:'or ar ir er ur — the bossy r', mode:'tiles', words:[
+    { w:'corn', g:['c','or','n'], e:'🌽' }, { w:'fork', g:['f','or','k'], e:'🍴' },
+    { w:'storm', g:['s','t','or','m'], e:'⛈️' }, { w:'horn', g:['h','or','n'], e:'📯' },
+    { w:'born', g:['b','or','n'], e:'👶' }, { w:'torch', g:['t','or','ch'], e:'🔦' },
+    { w:'horse', g:['h','or','s','e'], e:'🐴' }, { w:'fort', g:['f','or','t'], e:'🏰' },
+    { w:'car', g:['c','ar'], e:'🚗' }, { w:'star', g:['s','t','ar'], e:'⭐' },
+    { w:'shark', g:['sh','ar','k'], e:'🦈' }, { w:'park', g:['p','ar','k'], e:'🏞️' },
+    { w:'farm', g:['f','ar','m'], e:'🚜' }, { w:'jar', g:['j','ar'], e:'🏺' },
+    { w:'arm', g:['ar','m'], e:'💪' }, { w:'card', g:['c','ar','d'], e:'🃏' },
+    { w:'bird', g:['b','ir','d'], e:'🐦' }, { w:'girl', g:['g','ir','l'], e:'👧' },
+    { w:'shirt', g:['sh','ir','t'], e:'👕' }, { w:'skirt', g:['s','k','ir','t'], e:'👗' },
+    { w:'first', g:['f','ir','s','t'], e:'🥇' }, { w:'third', g:['th','ir','d'], e:'🥉' },
+    { w:'birthday', g:['b','ir','th','d','ay'], e:'🎂' },
+    { w:'fern', g:['f','er','n'], e:'🌿' }, { w:'herd', g:['h','er','d'], e:'🐄' },
+    { w:'winter', g:['w','i','n','t','er'], e:'❄️' }, { w:'butter', g:['b','u','tt','er'], e:'🧈' },
+    { w:'tiger', g:['t','i','g','er'], e:'🐯' }, { w:'water', g:['w','a','t','er'], e:'💧' },
+    { w:'surf', g:['s','ur','f'], e:'🏄' }, { w:'turn', g:['t','ur','n'], e:'🔄' },
+    { w:'burn', g:['b','ur','n'], e:'🔥' }, { w:'turtle', g:['t','ur','t','l','e'], e:'🐢' },
+    { w:'burger', g:['b','ur','g','er'], e:'🍔' }, { w:'church', g:['ch','ur','ch'], e:'⛪' },
+    { w:'purse', g:['p','ur','s','e'], e:'👛' },
+  ]},
   { id:5, icon:'🦘', label:'Tricky Words', ages:'7–8', sub:'Bigger words & endings', mode:'tiles', words:[
     { w:'whale', g:['wh','a','l','e'], e:'🐋' }, { w:'wheel', g:['wh','ee','l'], e:'🛞' },
     { w:'phone', g:['ph','o','n','e'], e:'📱' }, { w:'dolphin', g:['d','o','l','ph','i','n'], e:'🐬' },
@@ -144,6 +165,10 @@ AU.GPC = {
     cons: ['b','c','d','f','g','h','j','k','l','m','n','p','r','s','t','v','w','x','y','z','ck','ll','ss','ff','sh','ch','th','ng','qu'],
     vowels: ['a','e','i','o','u','ai','ay','ee','ea','igh','oa','ow','oo','ar','or','er','ir','ur'],
   },
+  8: {
+    cons: ['b','c','d','f','g','h','j','k','l','m','n','p','r','s','t','v','w','x','y','z','ck','ll','ss','ff','sh','ch','th','ng','qu'],
+    vowels: ['ar','or','er','ir','ur','a','e','i','o','u'],
+  },
   5: {
     cons: ['b','c','d','f','g','h','j','k','l','m','n','p','r','s','t','v','w','x','y','z','ck','ll','ss','ff','sh','ch','th','ng','qu','wh','ph','ce','tt','nn'],
     vowels: ['a','e','i','o','u','ai','ay','ee','ea','igh','oa','ow','oo','ar','or','er','ir','ur','oi','oy','ou','air','ear'],
@@ -163,6 +188,11 @@ AU.ALIEN = {
     real: ['rain','sheep','night','moon','boat','snow','star','corn','cake','kite'],
     alien: ['straim','queep','foan','glay','jound','sloam','groak','thaip','murn','doil'],
   },
+};
+
+AU.ALIEN[4] = {
+  real: ['corn','star','bird','turn','shark','park','fern','burn','girl','fork'],
+  alien: ['zor','glar','snur','plir','zarb','morf','gurk','yerp','vorn','dulf'],
 };
 
 AU.SORTS = [
@@ -189,11 +219,16 @@ AU.SORTS = [
       { label:'ed says d', words:['played','smiled','rained','cleaned','yelled','opened'] },
       { label:'ed says id', words:['wanted','painted','planted','shouted','landed','melted'] },
     ]},
-  { id:'er-ir-ur', icon:'🐦', title:'er ir ur', ages:'8+', rule:'er, ir and ur all say the same sound.',
+  { id:'er-ir-ur', icon:'🐦', title:'er ir ur', ages:'6+', rule:'er, ir and ur all say the same sound.',
     cols: [
-      { label:'er', words:['her','fern','winter','river','sister','under'] },
+      { label:'er', words:['her','fern','herd','winter','butter','tiger'] },
       { label:'ir', words:['bird','girl','first','shirt','dirt','third'] },
       { label:'ur', words:['turn','burn','nurse','surf','curl','hurt'] },
+    ]},
+  { id:'ar-or', icon:'🌽', title:'ar or', ages:'6+', rule:'ar and or both boss the vowel. Say it slowly: is it car or corn?',
+    cols: [
+      { label:'ar', words:['car','star','shark','park','farm','dark'] },
+      { label:'or', words:['corn','fork','storm','horn','born','fort'] },
     ]},
   { id:'plurals', icon:'🐈', title:'s or es', ages:'8+', rule:'Add es when a word ends in s, x, sh or ch.',
     cols: [
@@ -252,6 +287,79 @@ AU.STAGES.forEach(s => (s.words ?? []).forEach(x => AU.VALID.add(x.w)));
 AU.SORTS.forEach(s => s.cols.forEach(c => c.words.forEach(w => AU.VALID.add(w))));
 Object.values(AU.ALIEN).forEach(l => l.real.forEach(w => AU.VALID.add(w)));
 Object.values(AU.FACTORY).forEach(l => l.forEach(p => AU.VALID.add(p.word)));
+// ── Word chains (UFLI style): change one grapheme per step ───────
+AU.CHAINS = [
+  { id:'cat',  icon:'🐱', title:'Cat Chain',  ages:'4+', steps:['cat','bat','bit','big','pig','peg','leg'] },
+  { id:'ship', icon:'🚢', title:'Ship Chain', ages:'5+', steps:['shin','ship','shop','shot'] },
+  { id:'corn', icon:'🌽', title:'Corn Chain', ages:'6+', steps:['corn','born','barn','bark','shark','sharp'] },
+  { id:'turn', icon:'🔄', title:'Turn Chain', ages:'6+', steps:['turn','burn','barn','yarn','yard','hard'] },
+];
+
+// ── Heart words: tricky irregulars learned by heart ──────────────
+AU.HEART_WORDS = [
+  { w:'said', tricky:'ai' }, { w:'was', tricky:'a' }, { w:'were', tricky:'ere' },
+  { w:'they', tricky:'ey' }, { w:'come', tricky:'o' }, { w:'some', tricky:'o' },
+  { w:'one', tricky:'o' }, { w:'once', tricky:'o' }, { w:'two', tricky:'o' },
+  { w:'who', tricky:'o' }, { w:'what', tricky:'a' }, { w:'where', tricky:'ere' },
+  { w:'there', tricky:'ere' }, { w:'here', tricky:'ere' }, { w:'could', tricky:'oul' },
+  { w:'would', tricky:'oul' }, { w:'should', tricky:'oul' }, { w:'because', tricky:'au' },
+  { w:'friend', tricky:'ie' }, { w:'been', tricky:'ee' }, { w:'does', tricky:'oe' },
+  { w:'goes', tricky:'oe' }, { w:'want', tricky:'a' }, { w:'again', tricky:'ai' },
+];
+
+// ── Read-it sentences: controlled-r reading + retell ─────────────
+AU.SENTENCES = [
+  { s:'The bird sat on the fern.', q:'Where did the bird sit?' },
+  { s:'A shark can swim fast.', q:'What can a shark do?' },
+  { s:'The corn is hot!', q:'What is hot?' },
+  { s:'Mark has a red car.', q:'What does Mark have?' },
+  { s:'The girl had a turn on the swing.', q:'Who had a turn?' },
+  { s:'The storm made the fort wet.', q:'What made the fort wet?' },
+  { s:'Her purse is under the shirt.', q:'Where is her purse?' },
+  { s:'The turtle did not turn.', q:'What did the turtle not do?' },
+  { s:'A star is far, far up.', q:'Where is the star?' },
+  { s:'The surf is big at the beach.', q:'What is big at the beach?' },
+  { s:'Farm dogs bark at the dark barn.', q:'What do the farm dogs do?' },
+  { s:'Do not burn the buns!', q:'What must we not burn?' },
+];
+
+// Chain steps are legal words too.
+AU.CHAINS.forEach(c => c.steps.forEach(w => AU.VALID.add(w)));
+
+// ── Grapheme splitter (longest match) for chain games ────────────
+AU.GRAPHEMES = ['igh','ear','air','sh','ch','th','ng','ck','ll','ss','ff','gg','zz','qu','wh','ph','ar','or','er','ir','ur','ai','ay','ee','ea','oa','ow','oo','oi','oy','ou','ce','tt','nn'];
+AU.segment = word => {
+  const out = [];
+  let i = 0;
+  while (i < word.length) {
+    let hit = null;
+    for (const g of AU.GRAPHEMES) {
+      if (word.startsWith(g, i)) { hit = g; break; }
+    }
+    out.push(hit ?? word[i]);
+    i += (hit ?? word[i]).length;
+  }
+  return out;
+};
+
+// ── Weekly focus (from settings.json): bias rounds to these sounds ──
+AU.focus = [];
+fetch('/settings.json').then(r => r.json()).then(s => {
+  if (Array.isArray(s.weeklyFocus)) AU.focus = s.weeklyFocus;
+}).catch(() => {});
+AU.hasFocus = wordObj => {
+  if (!AU.focus.length) return false;
+  const parts = wordObj.g ?? AU.segment(wordObj.w);
+  return parts.some(g => AU.focus.includes(g));
+};
+// Shuffle, but words containing a focus grapheme come first.
+AU.preferFocus = list => {
+  if (!AU.focus.length) return AU.shuffle(list);
+  const yes = AU.shuffle(list.filter(AU.hasFocus));
+  const no  = AU.shuffle(list.filter(x => !AU.hasFocus(x)));
+  return [...yes, ...no];
+};
+
 
 AU.shuffle = arr => {
   for (let i = arr.length - 1; i > 0; i--) {

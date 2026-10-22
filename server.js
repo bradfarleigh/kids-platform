@@ -6,7 +6,7 @@ import { dirname, join } from 'path';
 const __dir = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'kids123';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ''; // admin endpoints stay disabled until this is set
 const YT_API_KEY = process.env.YOUTUBE_API_KEY || '';
 const VIDEOS_PATH = join(__dir, 'data/videos.json');
 
@@ -15,6 +15,7 @@ app.use(express.static(join(__dir, 'public')));
 
 // ── Auth middleware ────────────────────────────────────────────────
 function requireAdmin(req, res, next) {
+  if (!ADMIN_PASSWORD) return res.status(503).json({ error: 'Admin disabled: set the ADMIN_PASSWORD environment variable' });
   const auth = req.headers['authorization'] ?? '';
   if (auth === `Bearer ${ADMIN_PASSWORD}`) return next();
   res.status(401).json({ error: 'Unauthorized' });

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Story Time</title>
+  <link rel="stylesheet" href="../../css/kids.css">
+  <style>
+    body { background: linear-gradient(160deg, #30cfd0 0%, #330867 100%); }
+
+    #screen-game { flex: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+    .st-header {
+      width: 100%; padding: 72px 24px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .st-progress { font-size: 20px; font-weight: 900; color: white; }
+
+    .st-content {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: clamp(20px, 4vh, 36px);
+      padding: 0 20px 32px; width: 100%; max-width: 620px;
+    }
+
+    .st-tip {
+      font-size: clamp(16px, 3.6vw, 22px); font-weight: 800;
+      color: rgba(255,255,255,.9); text-align: center;
+    }
+
+    .st-card {
+      background: white; border-radius: 28px;
+      padding: clamp(28px, 6vw, 44px) clamp(24px, 6vw, 44px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.25);
+      display: flex; flex-direction: column; align-items: center; gap: 18px;
+      width: 100%;
+    }
+    .st-sentence {
+      font-size: clamp(28px, 7vw, 46px); font-weight: 900; color: #1A202C;
+      line-height: 1.3; text-align: center;
+    }
+    .st-sentence .rsound { color: #8e24aa; }
+    .st-question {
+      font-size: clamp(22px, 5.5vw, 36px); font-weight: 900; color: #1A202C;
+      line-height: 1.3; text-align: center;
+    }
+
+    .big-btn {
+      background: #FFE66D; border: none; border-radius: 100px;
+      padding: 16px 34px; font-size: clamp(18px, 4.4vw, 26px); font-weight: 900;
+      color: #1A202C; cursor: pointer; font-family: inherit;
+      box-shadow: 0 6px 20px rgba(0,0,0,.18);
+      display: flex; align-items: center; gap: 10px;
+      transition: transform .12s;
+    }
+    .big-btn:active { transform: scale(.93); }
+    .big-btn.go { background: #6BCB77; color: white; }
+  </style>
+</head>
+<body>
+  <button class="nav-back" id="back-btn">🏠</button>
+
+  <div id="screen-game">
+    <div class="st-header">
+      <div class="st-progress" id="progress"></div>
+      <div class="st-progress">📖 Story Time</div>
+    </div>
+    <div class="st-content">
+      <div class="st-tip" id="tip">Read the sentence out loud. The purple words have bossy r sounds!</div>
+      <div class="st-card">
+        <div class="st-sentence" id="sentence"></div>
+        <button class="big-btn" id="hear-btn">🔊 Hear it</button>
+      </div>
+      <button class="big-btn go" id="next-btn">I read it! 🎤</button>
+    </div>
+  </div>
+
+  <script src="../_lib/confetti.js"></script>
+  <script src="../_lib/KidsGame.js"></script>
+  <script src="../_lib/words-au.js"></script>
+  <script>
+    const R_PATTERN = /\b\w*(?:ar|or|er|ir|ur)\w*\b/gi;
+
+    let game, deck, di, phase; // phase: 'read' | 'retell'
+
+    const progressEl = document.getElementById('progress');
+    const tipEl      = document.getElementById('tip');
+    const sentenceEl = document.getElementById('sentence');
+    const hearBtn    = document.getElementById('hear-btn');
+    const nextBtn    = document.getElementById('next-btn');
+    const backBtn    = document.getElementById('back-btn');
+
+    class StoryGame extends KidsGame {
+      init() {
+        hearBtn.addEventListener('click', () => {
+          this._ctx();
+          const item = deck[di];
+          AU.speak(phase === 'read' ? item.s : item.q, { rate: 0.8 });
+        });
+        nextBtn.addEventListener('click', () => advance());
+        backBtn.addEventListener('click', () => this.home());
+        startGame();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      game = new StoryGame({ name: 'Story Time' });
+      game.init();
+    });
+
+    function startGame() {
+      deck = AU.shuffle([...AU.SENTENCES]);
+      di = 0;
+      phase = 'read';
+      renderProgress();
+      renderCard();
+    }
+
+    function renderProgress() {
+      progressEl.textContent = `${Math.min(di + 1, deck.length)} / ${deck.length}`;
+    }
+
+    function highlightRSounds(sentence) {
+      return sentence.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(R_PATTERN, m => '<span class="rsound">' + m + '</span>');
+    }
+
+    function renderCard() {
+      const item = deck[di];
+      sentenceEl.className = phase === 'read' ? 'st-sentence' : 'st-question';
+      if (phase === 'read') {
+        tipEl.textContent = 'Read the sentence out loud. The purple words have bossy r sounds!';
+        sentenceEl.innerHTML = highlightRSounds(item.s);
+        nextBtn.textContent = 'I read it! 🎤';
+      } else {
+        tipEl.textContent = 'Retell time! Answer out loud — tell a grown-up.';
+        sentenceEl.textContent = item.q;
+        nextBtn.textContent = 'I answered! ✅';
+      }
+    }
+
+    function advance() {
+      game._ctx();
+      if (phase === 'read') {
+        phase = 'retell';
+        game.sound('pop');
+        renderCard();
+        setTimeout(() => AU.speak(deck[di].q, { rate: 0.8 }), 300);
+      } else {
+        game.sound('correct');
+        di++;
+        phase = 'read';
+        renderProgress();
+        if (di >= deck.length) {
+          KidsGame.saveResult('sentences', { score: deck.length * 10, stars: 3 });
+          game.showWin(3, action => { if (action === 'again') startGame(); });
+        } else {
+          renderCard();
+        }
+      }
+    }
+  </script>
+</body>
+</html>

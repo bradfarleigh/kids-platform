@@ -240,6 +240,7 @@
         overlay.remove();
         wordCard.style.visibility = 'visible';
         const stars = mistakes <= 1 ? 3 : mistakes <= 4 ? 2 : 1;
+        KidsGame.saveResult('wordsort', { score, stars });
         game.showWin(stars, action => { if (action === 'again') startGame(set); });
       });
     }

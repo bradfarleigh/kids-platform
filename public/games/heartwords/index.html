@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Heart Words</title>
+  <link rel="stylesheet" href="../../css/kids.css">
+  <style>
+    body { background: linear-gradient(160deg, #f7709c 0%, #ff9a8b 100%); }
+
+    #screen-game { flex: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+    .hw-header {
+      width: 100%; padding: 72px 24px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .hw-progress { font-size: 20px; font-weight: 900; color: white; }
+    .hw-score {
+      font-size: 20px; font-weight: 900; color: white;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .hw-content {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: clamp(20px, 4vh, 36px);
+      padding: 0 20px 32px; width: 100%; max-width: 560px;
+    }
+
+    .hw-tip {
+      font-size: clamp(16px, 3.6vw, 22px); font-weight: 800;
+      color: rgba(255,255,255,.95); text-align: center;
+    }
+
+    .hw-card {
+      background: white; border-radius: 28px;
+      padding: clamp(28px, 7vw, 48px) clamp(32px, 9vw, 64px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.22);
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      cursor: pointer; border: none; font-family: inherit;
+    }
+    .hw-word {
+      font-size: clamp(48px, 14vw, 84px); font-weight: 900; color: #1A202C;
+      line-height: 1.1;
+    }
+    .hw-word .tricky {
+      color: #E53935;
+      text-decoration: underline wavy #E53935 4px;
+      text-underline-offset: 8px;
+    }
+    .hw-hear { font-size: 22px; color: #718096; font-weight: 800; }
+
+    .answer-row { display: flex; gap: 16px; width: 100%; justify-content: center; }
+    .answer-btn {
+      flex: 1; max-width: 220px; min-height: 100px; border-radius: 20px;
+      border: none; cursor: pointer; font-family: inherit;
+      font-size: clamp(18px, 4vw, 22px); font-weight: 900; color: white;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.2);
+      transition: transform .12s;
+    }
+    .answer-btn:active { transform: scale(.93); }
+    .answer-btn .sub { font-size: 13px; font-weight: 700; opacity: .9; }
+    #btn-learning { background: #FB923C; }
+    #btn-known    { background: #6BCB77; }
+  </style>
+</head>
+<body>
+  <button class="nav-back" id="back-btn">🏠</button>
+
+  <div id="screen-game">
+    <div class="hw-header">
+      <div class="hw-progress" id="progress"></div>
+      <div class="hw-score">❤️ <span id="score-val">0</span></div>
+    </div>
+    <div class="hw-content">
+      <div class="hw-tip">The wavy red part is the tricky bit — learn it by heart! ❤️</div>
+      <button class="hw-card" id="card">
+        <span class="hw-word" id="word"></span>
+        <span class="hw-hear">🔊 tap to hear it</span>
+      </button>
+      <div class="answer-row">
+        <button class="answer-btn" id="btn-learning">💪<span>Still learning</span><span class="sub">show me again</span></button>
+        <button class="answer-btn" id="btn-known">⭐<span>I know it!</span><span class="sub">by heart</span></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../_lib/confetti.js"></script>
+  <script src="../_lib/KidsGame.js"></script>
+  <script src="../_lib/words-au.js"></script>
+  <script>
+    let game, queue, qi, knownThisRound, seen;
+
+    const progressEl = document.getElementById('progress');
+    const scoreEl    = document.getElementById('score-val');
+    const wordEl     = document.getElementById('word');
+    const card       = document.getElementById('card');
+    const btnLearn   = document.getElementById('btn-learning');
+    const btnKnown   = document.getElementById('btn-known');
+    const backBtn    = document.getElementById('back-btn');
+
+    class HeartGame extends KidsGame {
+      init() {
+        card.addEventListener('click', () => { this._ctx(); AU.speak(queue[qi].w); });
+        btnLearn.addEventListener('click', () => answer(false));
+        btnKnown.addEventListener('click', () => answer(true));
+        backBtn.addEventListener('click', () => this.home());
+        startGame();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      game = new HeartGame({ name: 'Heart Words' });
+      game.init();
+    });
+
+    function knownKey() {
+      const p = KidsGame.activeProfile();
+      return p ? 'kp-heart-' + p.id : null;
+    }
+    function getKnown() {
+      const k = knownKey();
+      if (!k) return new Set();
+      try { return new Set(JSON.parse(localStorage.getItem(k)) ?? []); }
+      catch { return new Set(); }
+    }
+    function markKnown(w) {
+      const k = knownKey();
+      if (!k) return;
+      const s = getKnown();
+      s.add(w);
+      localStorage.setItem(k, JSON.stringify([...s]));
+    }
+
+    function startGame() {
+      const known = getKnown();
+      const fresh = AU.HEART_WORDS.filter(x => !known.has(x.w));
+      const review = AU.HEART_WORDS.filter(x => known.has(x.w));
+      queue = AU.shuffle([...AU.shuffle(fresh), ...AU.shuffle(review).slice(0, 4)]);
+      qi = 0;
+      knownThisRound = 0;
+      seen = new Set();
+      renderCard();
+    }
+
+    function renderCard() {
+      const item = queue[qi];
+      const i = item.w.indexOf(item.tricky);
+      wordEl.innerHTML = i >= 0
+        ? item.w.slice(0, i) + '<span class="tricky">' + item.tricky + '</span>' + item.w.slice(i + item.tricky.length)
+        : item.w;
+      progressEl.textContent = `${Math.min(qi + 1, queue.length)} / ${queue.length}`;
+      setTimeout(() => AU.speak(item.w), 350);
+    }
+
+    function answer(known) {
+      game._ctx();
+      const item = queue[qi];
+      if (known) {
+        game.sound('correct');
+        markKnown(item.w);
+        if (!seen.has(item.w)) { knownThisRound++; seen.add(item.w); }
+        scoreEl.textContent = parseInt(scoreEl.textContent) + 10;
+        queue.splice(qi, 1);
+      } else {
+        game.sound('click');
+        // Put it back near the end so it comes around again.
+        queue.splice(qi, 1);
+        queue.splice(Math.min(queue.length, qi + 3), 0, item);
+        seen.add(item.w);
+      }
+      if (queue.length === 0) return finish();
+      if (qi >= queue.length) qi = 0;
+      setTimeout(renderCard, 250);
+    }
+
+    function finish() {
+      const total = seen.size || 1;
+      const ratio = knownThisRound / total;
+      const stars = ratio >= 0.8 ? 3 : ratio >= 0.5 ? 2 : 1;
+      KidsGame.saveResult('heartwords', { score: knownThisRound * 10, stars });
+      game.showWin(stars, action => { if (action === 'again') startGame(); });
+    }
+  </script>
+</body>
+</html>

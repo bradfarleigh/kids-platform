@@ -109,6 +109,11 @@
         <span class="mode-card-label">Tricky Words</span>
         <span class="mode-card-sub">Ages 7+ • rain, straim</span>
       </button>
+      <button class="mode-card" data-level="4" style="border-top:6px solid #FF6B6B">
+        <span class="mode-card-icon">⭐</span>
+        <span class="mode-card-label">R Sounds</span>
+        <span class="mode-card-sub">Ages 6+ • corn, zor</span>
+      </button>
     </div>
   </div>
 
@@ -232,6 +237,7 @@
         renderProgress();
         if (cardIndex >= ROUND) {
           const stars = mistakes <= 1 ? 3 : mistakes <= 3 ? 2 : 1;
+          KidsGame.saveResult('alienwords', { score, stars });
           game.showWin(stars, action => { if (action === 'again') startGame(level); });
         } else {
           renderCard();
