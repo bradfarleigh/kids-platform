@@ -161,3 +161,57 @@ class KidsGame {
 
 KidsGame._settings = null;
 fetch('/settings.json').then(r => r.json()).then(s => { KidsGame._settings = s; }).catch(() => {});
+
+// ── Player profiles (P5) ─────────────────────────────────────────
+// Stored locally on the device; one profile per kid.
+//   kp-profiles: [{ id, name, age }]
+//   kp-active:   id of the active profile
+//   kp-results-<id>: { gameId: { plays, best, stars, lastPlayed } }
+KidsGame.profiles = () => {
+  try { return JSON.parse(localStorage.getItem('kp-profiles')) ?? []; }
+  catch { return []; }
+};
+
+KidsGame.saveProfiles = list => {
+  localStorage.setItem('kp-profiles', JSON.stringify(list));
+};
+
+KidsGame.addProfile = (name, age) => {
+  const list = KidsGame.profiles();
+  const p = { id: 'p' + Date.now().toString(36), name, age };
+  list.push(p);
+  KidsGame.saveProfiles(list);
+  KidsGame.setActive(p.id);
+  return p;
+};
+
+KidsGame.activeProfile = () => {
+  const id = localStorage.getItem('kp-active');
+  return KidsGame.profiles().find(p => p.id === id) ?? null;
+};
+
+KidsGame.setActive = id => localStorage.setItem('kp-active', id);
+
+// Record a finished round for the active profile (no-op without one).
+KidsGame.saveResult = (gameId, { score = 0, stars = 0 } = {}) => {
+  const prof = KidsGame.activeProfile();
+  if (!prof) return;
+  const key = 'kp-results-' + prof.id;
+  let all = {};
+  try { all = JSON.parse(localStorage.getItem(key)) ?? {}; } catch {}
+  const prev = all[gameId] ?? { plays: 0, best: 0, stars: 0 };
+  all[gameId] = {
+    plays: prev.plays + 1,
+    best: Math.max(prev.best, score),
+    stars: Math.max(prev.stars, stars),
+    lastPlayed: new Date().toISOString(),
+  };
+  localStorage.setItem(key, JSON.stringify(all));
+};
+
+KidsGame.results = () => {
+  const prof = KidsGame.activeProfile();
+  if (!prof) return {};
+  try { return JSON.parse(localStorage.getItem('kp-results-' + prof.id)) ?? {}; }
+  catch { return {}; }
+};

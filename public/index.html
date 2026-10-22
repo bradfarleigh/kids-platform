@@ -51,6 +51,51 @@
     }
     .age-btn:active { transform: scale(.88); }
 
+    .profile-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      width: 100%;
+    }
+    .profile-btn {
+      background: white;
+      border: none;
+      border-radius: 24px;
+      padding: 26px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      box-shadow: 0 8px 24px rgba(0,0,0,.2);
+      transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+    }
+    .profile-btn:active { transform: scale(.93); }
+    .profile-emoji { font-size: clamp(40px, 9vw, 60px); line-height: 1; }
+    .profile-name { font-size: clamp(20px, 4.5vw, 28px); font-weight: 900; color: var(--dark); }
+    .profile-age { font-size: 14px; font-weight: 700; color: #718096; }
+    .profile-btn.new {
+      background: rgba(255,255,255,.25);
+      color: white;
+      backdrop-filter: blur(8px);
+    }
+    .profile-btn.new .profile-name { color: white; }
+
+    .name-input {
+      width: 100%;
+      border: none;
+      border-radius: 20px;
+      padding: 18px 22px;
+      font-size: clamp(22px, 5vw, 30px);
+      font-weight: 900;
+      font-family: inherit;
+      text-align: center;
+      color: var(--dark);
+      box-shadow: 0 8px 24px rgba(0,0,0,.2);
+      outline: none;
+    }
+
     .home-wrap {
       display: flex;
       flex-direction: column;
@@ -110,6 +155,12 @@
     .home-card--videos { border-top: 6px solid #FF6B6B; }
     .home-card--games  { border-top: 6px solid #4ECDC4; }
 
+    .switch-link {
+      background: none; border: none; cursor: pointer;
+      color: rgba(255,255,255,.85); font-family: inherit;
+      font-size: 16px; font-weight: 800; text-decoration: underline;
+    }
+
     .admin-link {
       position: fixed; bottom: 20px; right: 20px;
       background: rgba(255,255,255,.15); border: none;
@@ -122,22 +173,28 @@
   </style>
 </head>
 <body>
-  <div class="age-wrap" id="age-screen">
-    <h2 class="age-question">How old are you? 🎂</h2>
+  <div class="age-wrap hidden" id="pick-screen">
+    <h2 class="age-question">Who's playing? 😀</h2>
+    <div class="profile-grid" id="profile-grid"></div>
+  </div>
+
+  <div class="age-wrap hidden" id="create-screen">
+    <h2 class="age-question">New player 🎂</h2>
+    <input class="name-input" id="name-input" maxlength="12" placeholder="Your name" autocomplete="off">
     <div class="age-grid">
-      <button class="age-btn" style="background:#FF6B6B" onclick="pickAge(4)">4</button>
-      <button class="age-btn" style="background:#FB923C" onclick="pickAge(5)">5</button>
-      <button class="age-btn" style="background:#FBBF24;color:#92400E" onclick="pickAge(6)">6</button>
-      <button class="age-btn" style="background:#6BCB77" onclick="pickAge(7)">7</button>
-      <button class="age-btn" style="background:#4ECDC4" onclick="pickAge(8)">8</button>
-      <button class="age-btn" style="background:#4D96FF" onclick="pickAge(9)">9</button>
-      <button class="age-btn" style="background:#A78BFA" onclick="pickAge(10)">10</button>
+      <button class="age-btn" style="background:#FF6B6B" onclick="createProfile(4)">4</button>
+      <button class="age-btn" style="background:#FB923C" onclick="createProfile(5)">5</button>
+      <button class="age-btn" style="background:#FBBF24;color:#92400E" onclick="createProfile(6)">6</button>
+      <button class="age-btn" style="background:#6BCB77" onclick="createProfile(7)">7</button>
+      <button class="age-btn" style="background:#4ECDC4" onclick="createProfile(8)">8</button>
+      <button class="age-btn" style="background:#4D96FF" onclick="createProfile(9)">9</button>
+      <button class="age-btn" style="background:#A78BFA" onclick="createProfile(10)">10</button>
     </div>
   </div>
 
   <div class="home-wrap hidden" id="home-screen">
     <div class="home-greeting">
-      <h1>Hey there! 👋</h1>
+      <h1 id="greeting">Hey there! 👋</h1>
       <p>What do you want to do?</p>
     </div>
     <div class="home-cards">
@@ -150,22 +207,77 @@
         <span class="home-card-label">Play Games</span>
       </a>
     </div>
+    <button class="switch-link" onclick="switchPlayer()">Not you? Switch player</button>
   </div>
 
   <a href="admin.html" class="admin-link" title="Admin">⚙️</a>
+  <script src="games/_lib/KidsGame.js"></script>
   <script>
-    if (localStorage.getItem('kidsAge')) {
-      document.getElementById('age-screen').classList.add('hidden');
-      document.getElementById('home-screen').classList.remove('hidden');
+    const AVATARS = ['🦖','🦄','🐨','🚀','🐬','🦁','🦋','🐳','🦘','🐸'];
+    const pickScreen   = document.getElementById('pick-screen');
+    const createScreen = document.getElementById('create-screen');
+    const homeScreen   = document.getElementById('home-screen');
+    const nameInput    = document.getElementById('name-input');
+
+    function show(el) {
+      [pickScreen, createScreen, homeScreen].forEach(x => x.classList.add('hidden'));
+      el.classList.remove('hidden');
+      el.classList.add('anim-pop-in');
     }
 
-    function pickAge(n) {
-      localStorage.setItem('kidsAge', String(n));
-      document.getElementById('age-screen').classList.add('hidden');
-      const hs = document.getElementById('home-screen');
-      hs.classList.remove('hidden');
-      hs.classList.add('anim-pop-in');
+    function buildProfilePicker() {
+      const grid = document.getElementById('profile-grid');
+      grid.innerHTML = '';
+      KidsGame.profiles().forEach((p, i) => {
+        const b = document.createElement('button');
+        b.className = 'profile-btn';
+        b.innerHTML = `
+          <span class="profile-emoji">${AVATARS[i % AVATARS.length]}</span>
+          <span class="profile-name">${p.name}</span>
+          <span class="profile-age">age ${p.age}</span>`;
+        b.addEventListener('click', () => {
+          KidsGame.setActive(p.id);
+          showHome();
+        });
+        grid.appendChild(b);
+      });
+      const add = document.createElement('button');
+      add.className = 'profile-btn new';
+      add.innerHTML = `
+        <span class="profile-emoji">➕</span>
+        <span class="profile-name">New player</span>`;
+      add.addEventListener('click', () => { show(createScreen); nameInput.focus(); });
+      grid.appendChild(add);
     }
+
+    function createProfile(age) {
+      const name = nameInput.value.trim() || 'Player';
+      KidsGame.addProfile(name, age);
+      nameInput.value = '';
+      showHome();
+    }
+
+    function switchPlayer() {
+      localStorage.removeItem('kp-active');
+      buildProfilePicker();
+      show(pickScreen);
+    }
+
+    function showHome() {
+      const p = KidsGame.activeProfile();
+      document.getElementById('greeting').textContent = p ? `Hey ${p.name}! 👋` : 'Hey there! 👋';
+      show(homeScreen);
+    }
+
+    // Entry point: existing player? pick screen? or first run.
+    (() => {
+      if (KidsGame.activeProfile()) { showHome(); return; }
+      const profiles = KidsGame.profiles();
+      if (profiles.length) { buildProfilePicker(); show(pickScreen); return; }
+      // Migrate the old single-age setting into the create form flow.
+      buildProfilePicker();
+      show(profiles.length ? pickScreen : createScreen);
+    })();
 
     (async () => {
       const [sr] = await Promise.allSettled([fetch('/settings.json').then(r => r.json())]);
