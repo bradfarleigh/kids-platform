@@ -231,10 +231,16 @@
       KidsGame.profiles().forEach((p, i) => {
         const b = document.createElement('button');
         b.className = 'profile-btn';
-        b.innerHTML = `
-          <span class="profile-emoji">${AVATARS[i % AVATARS.length]}</span>
-          <span class="profile-name">${p.name}</span>
-          <span class="profile-age">age ${p.age}</span>`;
+        const emoji = document.createElement('span');
+        emoji.className = 'profile-emoji';
+        emoji.textContent = AVATARS[i % AVATARS.length];
+        const name = document.createElement('span');
+        name.className = 'profile-name';
+        name.textContent = p.name;
+        const age = document.createElement('span');
+        age.className = 'profile-age';
+        age.textContent = `age ${p.age}`;
+        b.append(emoji, name, age);
         b.addEventListener('click', () => {
           KidsGame.setActive(p.id);
           showHome();
